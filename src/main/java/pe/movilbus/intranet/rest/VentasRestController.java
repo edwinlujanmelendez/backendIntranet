@@ -29,7 +29,17 @@ public class VentasRestController {
 	
 	@Autowired
 	private VentasService ventasService;
-		
+	
+	@PostMapping("/pagoLinkIziPay")
+	public MensajeConfirmacionResult pagoLinkIziPay(@RequestBody VentasGeneral venta){
+		return ventasService.pagoLinkIziPay(venta);
+	}
+	
+	@PostMapping("/actualizarVentasPagoLinkIziPay")
+    public ResponseEntity<String> actualizarVentasPagoLinkIziPay(@RequestHeader("Signature") String signature, @RequestBody String body){
+		return ventasService.actualizarVentasPagoLinkIziPay(signature, body);
+	}
+	
 	@PostMapping("/pagoLinkNiubiz")
 	public MensajeConfirmacionResult pagoLinkNiubiz(@RequestBody VentasGeneral venta){
 		return ventasService.pagoLinkNiubiz(venta);

@@ -13,6 +13,10 @@ import pe.movilbus.intranet.result.MensajeConfirmacionResult;
 import pe.movilbus.intranet.result.MensajeFlagResult;
 
 public interface VentasDao {
+	
+	public MensajeConfirmacionResult pagoLinkIziPay(VentasGeneral venta);
+	
+	public ResponseEntity<String> actualizarVentasPagoLinkIziPay(String signature, String body);
 		
 	public MensajeConfirmacionResult pagoLinkNiubiz(VentasGeneral venta);
 		

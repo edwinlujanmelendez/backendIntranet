@@ -4,22 +4,15 @@ import java.io.Serializable;
 
 public class RequestApiWS implements Serializable {
 	
-	
 	private static final long serialVersionUID = 1L;
 	private String url;
 	private String body;
 	private String autorizacion;
 	private String tipometodo;
 	
-	
-	
 	public RequestApiWS() {
 		super();
 	}
-
-
-
-
 
 	public RequestApiWS(String url, String body, String autorizacion, String tipometodo) {
 		super();
@@ -28,10 +21,6 @@ public class RequestApiWS implements Serializable {
 		this.autorizacion = autorizacion;
 		this.tipometodo = tipometodo;
 	}
-
-
-
-
 
 	public String getUrl() {
 		return url;
@@ -51,17 +40,10 @@ public class RequestApiWS implements Serializable {
 	public void setAutorizacion(String autorizacion) {
 		this.autorizacion = autorizacion;
 	}
-
-
 	public String getTipometodo() {
 		return tipometodo;
 	}
-
-
 	public void setTipometodo(String tipometodo) {
 		this.tipometodo = tipometodo;
 	}
-
-	
-
 }

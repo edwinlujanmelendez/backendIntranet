@@ -212,6 +212,14 @@ public class Constantes implements Serializable {
 	public static final DateFormat FORMAT_LONG = new SimpleDateFormat ("dd/MM/yyyy HH:mm");
 	public static final DateFormat FORMAT_DATE_TIME_24H = new SimpleDateFormat ("dd/MM/yyyy HH:mm:ss");
 	
+//	// IZIPAY - DESARROLLO
+//	public static final String MERCHANT_ID_IZIPAY = "4004353";
+//	public static final String PUBLIC_KEY_IZIPAY = "VErethUtraQuxas57wuMuquprADrAHAb";
+//	public static final String HASH_KEY_IZIPAY = "Xom5Hlt9eSWoylYuBrenIbOsTljEdefR";
+//	public static final String URL_TOKEN_IZIPAY = "https://sandbox-api-pw.izipay.pe/security/v1/Token/Generate";
+//	public static final String URL_CREACION_LINK_IZIPAY = "https://sandbox-api-pw.izipay.pe/paymentlink/api/v1/process/generate";
+//	public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendIntranetQA/Ventas/actualizarVentasPagoLinkIziPay";
+//	
 //	// security : https://apitestenv.vnforapps.com/api.security/v2/security/keys
 //	// PAGO LINK - DESARROLLO
 //	public static final int CODIGO_COMERCIO = 341198214;
@@ -228,6 +236,15 @@ public class Constantes implements Serializable {
 //	public static final String SECRETKEY_PAGOEFECTIVO = "AWkC3mGers7l6JAPmCqwGnKsQCsleWbwuXIpjE7P";
 //	public static final String EMAIL_RESPUESTA_ADMIN = "edwin.lujan@movilbus.pe";
 //	public static final String URL_RESPUESTA_PAGOEFECTIVO = "https://qapasajesdebus.movilbus.pe/confirmacion-pago?";
+	
+	// IZIPAY - PRODUCCIÓN
+	public static final String MERCHANT_ID_IZIPAY = "4080631";
+	public static final String PUBLIC_KEY_IZIPAY = "1PgWbh2Ep2l3TSvtEGPB2EsHSPv5Qdgo";
+	public static final String HASH_KEY_IZIPAY = "v96XZVnF4VPEWNwq8FqEXfeMrK0nHZ2M";
+	public static final String URL_TOKEN_IZIPAY = "https://api-pw.izipay.pe/security/v1/Token/Generate";
+	public static final String URL_CREACION_LINK_IZIPAY = "https://api-pw.izipay.pe/paymentlink/api/v1/process/generate";
+	//public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendIntranet/Ventas/actualizarVentasPagoLinkIziPay";
+	public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendEcommerce/Ventas/updateIziPay";
 	
 	// PAGO LINK - PRODUCCION
 	public static final int CODIGO_COMERCIO = 651023411;

@@ -200,45 +200,49 @@ public class PromocionesDaoImpl implements PromocionesDao{
 		//CREATE SEQUENCE  "PASAJES"."SEQ_VRMCUPONES_ID"  MINVALUE 1 MAXVALUE 9999999999999999999999999999 INCREMENT BY 1 START WITH 25 NOCACHE  ORDER  NOCYCLE  NOKEEP  NOSCALE  GLOBAL ;
 		String sql = "";
 		try{
-			LocalDateTime myDateObj = LocalDateTime.now();
-			DateTimeFormatter myFormatObj = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-			SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
-			
-			Date fechaHoy = formato.parse(myDateObj.format(myFormatObj));
-			Date fechaPromocionInicio = formato.parse(data.getFecha_inicio());
-			Date fechaPromocionFin = formato.parse(data.getFecha_fin());
-			
-			int estado = 0;
-			if(fechaPromocionInicio.equals(fechaHoy) || fechaPromocionFin.equals(fechaHoy)){
-				estado = 1;
-			}else if(fechaHoy.after(fechaPromocionInicio) && fechaHoy.before(fechaPromocionFin)){
-				estado = 1;
+			if (data.getUsuario_login() != null && !data.getUsuario_login().trim().isEmpty()) {
+				LocalDateTime myDateObj = LocalDateTime.now();
+				DateTimeFormatter myFormatObj = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+				SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy");
+				
+				Date fechaHoy = formato.parse(myDateObj.format(myFormatObj));
+				Date fechaPromocionInicio = formato.parse(data.getFecha_inicio());
+				Date fechaPromocionFin = formato.parse(data.getFecha_fin());
+				
+				int estado = 0;
+				if(fechaPromocionInicio.equals(fechaHoy) || fechaPromocionFin.equals(fechaHoy)){
+					estado = 1;
+				}else if(fechaHoy.after(fechaPromocionInicio) && fechaHoy.before(fechaPromocionFin)){
+					estado = 1;
+				}else{
+					estado = 0;
+				}
+				
+				if(data.getCupones_id() == 0){										//NUEVA PROMOCION
+					sql = " select pasajes.SEQ_VRMCUPONES_ID.NEXTVAL from dual";
+					BigDecimal cupones_id = jdbcTemplate.queryForObject(sql, BigDecimal.class);
+					
+					sql = " insert into pasajes.vrmpromociones (cupones_id, nombre, porcentaje_desc, usosrestantes, servicios, rutas_prohibidas, fecha_inicio, fecha_fin, compra_inicio, compra_fin, estado, grupo_cupones, rutas_aceptadas, tipo_promocion, tipo_sistema, audusuins) "+
+						  " values ("+cupones_id+", '"+data.getNombre()+"', "+data.getPorcentaje_desc()+", '"+data.getUsosrestantes()+"', '"+data.getServicios()+"', '"+data.getRutas_prohibidas()+"', '"+data.getFecha_inicio()+"', '"+data.getFecha_fin()+"', '"+data.getCompra_inicio()+"',"+
+						  " '"+data.getCompra_fin()+"', "+estado+", "+data.getGrupo_cupones()+", '"+data.getRutas_aceptadas()+"', "+data.getTipo_promocion()+", "+data.getTipo_sistema()+", '"+data.getUsuario_login()+"')";
+					
+					jdbcTemplate.update(sql);
+				}else{																//ACTUALIZAR PROMOCION
+					sql = " update vrmpromociones set nombre='"+data.getNombre()+"', porcentaje_desc="+data.getPorcentaje_desc()+", usosrestantes='"+data.getUsosrestantes()+"', servicios='"+data.getServicios()+"', rutas_prohibidas='"+data.getRutas_prohibidas()+"', fecha_inicio='"+data.getFecha_inicio()+"', "+
+						  " fecha_fin='"+data.getFecha_fin()+"', compra_inicio='"+data.getCompra_inicio()+"', compra_fin='"+data.getCompra_fin()+"', estado="+estado+", grupo_cupones="+data.getGrupo_cupones()+", rutas_aceptadas='"+data.getRutas_aceptadas()+"', tipo_promocion="+data.getTipo_promocion()+", tipo_sistema="+data.getTipo_sistema()+
+						  ", audusumod='"+data.getUsuario_login()+"' where cupones_id="+data.getCupones_id();
+					
+					jdbcTemplate.update(sql);
+				}
+				
+				return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, "Se insertó o actualizó con éxito la promoción: "+data.getNombre());
 			}else{
-				estado = 0;
+				return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "Hubo un error, vuelva a salir e iniciar sesión para proceder con su solicitud.");
 			}
-			
-			if(data.getCupones_id() == 0){										//NUEVA PROMOCION
-				sql = " select pasajes.SEQ_VRMCUPONES_ID.NEXTVAL from dual";
-				BigDecimal cupones_id = jdbcTemplate.queryForObject(sql, BigDecimal.class);
-				
-				sql = " insert into pasajes.vrmpromociones (cupones_id, nombre, porcentaje_desc, usosrestantes, servicios, rutas_prohibidas, fecha_inicio, fecha_fin, compra_inicio, compra_fin, estado, grupo_cupones, rutas_aceptadas, tipo_promocion, tipo_sistema) "+
-					  " values ("+cupones_id+", '"+data.getNombre()+"', "+data.getPorcentaje_desc()+", '"+data.getUsosrestantes()+"', '"+data.getServicios()+"', '"+data.getRutas_prohibidas()+"', '"+data.getFecha_inicio()+"', '"+data.getFecha_fin()+"', '"+data.getCompra_inicio()+"',"+
-					  " '"+data.getCompra_fin()+"', "+estado+", "+data.getGrupo_cupones()+", '"+data.getRutas_aceptadas()+"', "+data.getTipo_promocion()+", "+data.getTipo_sistema()+")";
-				
-				jdbcTemplate.update(sql);
-			}else{																//ACTUALIZAR PROMOCION
-				sql = " update vrmpromociones set nombre='"+data.getNombre()+"', porcentaje_desc="+data.getPorcentaje_desc()+", usosrestantes='"+data.getUsosrestantes()+"', servicios='"+data.getServicios()+"', rutas_prohibidas='"+data.getRutas_prohibidas()+"', fecha_inicio='"+data.getFecha_inicio()+"', "+
-					  " fecha_fin='"+data.getFecha_fin()+"', compra_inicio='"+data.getCompra_inicio()+"', compra_fin='"+data.getCompra_fin()+"', estado="+estado+", grupo_cupones="+data.getGrupo_cupones()+", rutas_aceptadas='"+data.getRutas_aceptadas()+"', tipo_promocion="+data.getTipo_promocion()+", tipo_sistema="+data.getTipo_sistema()+
-					  " where cupones_id="+data.getCupones_id();
-				
-				jdbcTemplate.update(sql);
-			}
-			
-			return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, "Se insertó o actualizó con éxito la promoción: "+data.getCupones_id());
 		}catch(Exception e){
 			e.printStackTrace();
 			
-			return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "Error al insertar o actualizar la promoción: "+data.getCupones_id());
+			return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "Error al insertar o actualizar la promoción: "+data.getNombre());
 		}
 	}
 	

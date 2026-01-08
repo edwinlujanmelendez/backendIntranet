@@ -21,6 +21,7 @@ public class DataPromocionesCuponesCyber implements Serializable {
 	private String rutas_aceptadas;
 	private int tipo_promocion;
 	private int tipo_sistema;
+	private String usuario_login;
 	
 	public DataPromocionesCuponesCyber(){
 		super();
@@ -29,7 +30,7 @@ public class DataPromocionesCuponesCyber implements Serializable {
 	public DataPromocionesCuponesCyber(int cupones_id, String nombre, int porcentaje_desc, int usosrestantes,
 			String servicios, String rutas_prohibidas, String fecha_inicio, String fecha_fin, String compra_inicio,
 			String compra_fin, int estado, int grupo_cupones, String rutas_aceptadas, int tipo_promocion,
-			int tipo_sistema) {
+			int tipo_sistema, String usuario_login) {
 		super();
 		this.cupones_id = cupones_id;
 		this.nombre = nombre;
@@ -46,6 +47,7 @@ public class DataPromocionesCuponesCyber implements Serializable {
 		this.rutas_aceptadas = rutas_aceptadas;
 		this.tipo_promocion = tipo_promocion;
 		this.tipo_sistema = tipo_sistema;
+		this.usuario_login = usuario_login;
 	}
 
 	public int getCupones_id() {
@@ -167,5 +169,12 @@ public class DataPromocionesCuponesCyber implements Serializable {
 	public void setTipo_sistema(int tipo_sistema) {
 		this.tipo_sistema = tipo_sistema;
 	}
-	
+
+	public String getUsuario_login() {
+		return usuario_login;
+	}
+
+	public void setUsuario_login(String usuario_login) {
+		this.usuario_login = usuario_login;
+	}
 }

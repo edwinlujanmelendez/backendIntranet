@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 public class ReporteSeguimientoFrotcom {
 	private static final long serialVersionUID = 1L;
 	private BigDecimal itinerario_id;
+	private String servicio;
 	private String origen;
 	private String destino;
 	private String embarque_1_nombre;
@@ -48,7 +49,7 @@ public class ReporteSeguimientoFrotcom {
 		super();
 	}
 
-	public ReporteSeguimientoFrotcom(BigDecimal itinerario_id, String origen, String destino, String embarque_1_nombre,
+	public ReporteSeguimientoFrotcom(BigDecimal itinerario_id, String servicio, String origen, String destino, String embarque_1_nombre,
 			String embarque_1_hora, String embarque_2_nombre, String embarque_2_hora, String escala_comercial_1_nombre,
 			String escala_comercial_1_hora, String escala_comercial_2_nombre, String escala_comercial_2_hora,
 			String escala_comercial_3_nombre, String escala_comercial_3_hora, String escala_comercial_4_nombre,
@@ -63,6 +64,7 @@ public class ReporteSeguimientoFrotcom {
 			String desembarque_8_hora) {
 		super();
 		this.itinerario_id = itinerario_id;
+		this.servicio = servicio;
 		this.origen = origen;
 		this.destino = destino;
 		this.embarque_1_nombre = embarque_1_nombre;
@@ -109,6 +111,14 @@ public class ReporteSeguimientoFrotcom {
 
 	public void setItinerario_id(BigDecimal itinerario_id) {
 		this.itinerario_id = itinerario_id;
+	}
+	
+	public String getServicio() {
+		return servicio;
+	}
+
+	public void setServicio(String servicio) {
+		this.servicio = servicio;
 	}
 
 	public String getOrigen() {

@@ -25,6 +25,16 @@ public class VentasServiceImpl implements VentasService{
 	private VentasDao ventasDao;
 	
 	@Override
+	public MensajeConfirmacionResult pagoLinkIziPay(VentasGeneral venta){
+		return ventasDao.pagoLinkIziPay(venta);
+	}
+	
+	@Override
+	public ResponseEntity<String> actualizarVentasPagoLinkIziPay(String signature, String body){
+		return ventasDao.actualizarVentasPagoLinkIziPay(signature, body);
+	}
+	
+	@Override
 	public MensajeConfirmacionResult pagoLinkNiubiz(VentasGeneral venta){
 		return ventasDao.pagoLinkNiubiz(venta);
 	}

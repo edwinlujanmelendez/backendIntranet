@@ -32,7 +32,4 @@ public class Secuencia implements Serializable {
 	public void setC_serie(String c_serie) {
 		this.c_serie = c_serie;
 	}
-	
-	
-
 }

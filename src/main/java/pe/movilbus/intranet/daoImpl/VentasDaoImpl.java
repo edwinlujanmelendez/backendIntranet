@@ -14,11 +14,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Properties;
@@ -41,6 +44,7 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -68,6 +72,7 @@ import pe.movilbus.intranet.beans.ClienteSispas;
 import pe.movilbus.intranet.beans.CompaniaSispas;
 import pe.movilbus.intranet.beans.ConcesionarioSispas;
 import pe.movilbus.intranet.beans.DataTransbordos;
+import pe.movilbus.intranet.beans.DatosIziPaySimularPago;
 import pe.movilbus.intranet.beans.FormaPagoSispas;
 import pe.movilbus.intranet.beans.ItinerarioAgenciaPartidaIDSispas;
 import pe.movilbus.intranet.beans.ItinerarioSispas;
@@ -106,9 +111,11 @@ import pe.movilbus.intranet.beans.VentaPasaje;
 import pe.movilbus.intranet.beans.VentaPasajeros;
 import pe.movilbus.intranet.beans.VentasGeneral;
 import pe.movilbus.intranet.beans.DescargarPdfPasajes;
+import pe.movilbus.intranet.dao.MensajeFlagResultIziPay;
 import pe.movilbus.intranet.dao.VentasDao;
 import pe.movilbus.intranet.util.Constantes;
 import pe.movilbus.intranet.util.Util;
+import pe.movilbus.intranet.wsizipay.IziPay;
 import pe.movilbus.intranet.wspagoefectivo.PagoEfectivo;
 import pe.movilbus.intranet.wspagoefectivo.RequestPagoEfectivo;
 
@@ -124,66 +131,220 @@ public class VentasDaoImpl implements VentasDao{
 	@Override
 	public MensajeConfirmacionResult simularPago(String numOperacion){
 		try{
-			String sql = " select venpas_id, cliente_id, agencia_id, c_tiptra, c_estdoc, c_email_contacto, parentesco_id, n_tipo_pasajero from vrtvenpas "+
+			String sql = "";
+			
+			if(numOperacion.contains("IZIPL")){
+				sql = " select venpas_id, cliente_id, agencia_id, c_tiptra, c_estdoc, c_email_contacto, parentesco_id, n_tipo_pasajero from vrtvenpas "+
 						 " where n_numopeban='"+numOperacion+"' and c_tiptra=2 and c_estdoc is null ";
 			
-			List<UpdateVrtVenpas> updateVrtVenpas = jdbcTemplate.query(sql, new UpdateVrtVenpasRowMapper());
-			
-			String email_contacto = "";
-			String texto_ventas_concatenado = "";
-			String texto_archivos_concatenado = "";
-			
-			if(updateVrtVenpas.size() > 0){
-				for(UpdateVrtVenpas obj : updateVrtVenpas){
-					actualizarVrtVenpasNiubizPagoEfectivo(obj.getVenpas_id());
-					if(!numOperacion.contains("PE")){
-						actualizarVrtVenpasNiubizPagoEfectivoTarCre(obj.getVenpas_id());
-					}
-					
-					if(obj.getN_tipo_pasajero() != 3 && obj.getParentesco_id() != 4){
-						/*************** GENERAR EL BOLETO *************/
-						int cont_factura = 0;
-						if(obj.getCliente_id() != null){
-							cont_factura = 1;
+				List<UpdateVrtVenpas> updateVrtVenpas = jdbcTemplate.query(sql, new UpdateVrtVenpasRowMapper());
+				
+				String email_contacto = "";
+				String texto_ventas_concatenado = "";
+				String texto_archivos_concatenado = "";
+				
+				if(updateVrtVenpas.size() > 0){
+					for(UpdateVrtVenpas obj : updateVrtVenpas){
+						actualizarVrtVenpasNiubizPagoEfectivo(obj.getVenpas_id());
+						if(!numOperacion.contains("PE")){
+							actualizarVrtVenpasNiubizPagoEfectivoTarCre(obj.getVenpas_id());
 						}
 						
-						int tipcom_val = 0;
-						
-						if(cont_factura == 1){
-							tipcom_val = 2;
-						}else{
-							tipcom_val = 7;
-						}
-						
-						sql = "select c_corseq, c_serie from vrmespval where agencia_id="+obj.getAgencia_id()+" and tipcom_id="+tipcom_val+" and empresa_id=1 and c_estreg='"+Constantes.ACTIVO+"'";
-						List<Secuencia> lstSecuencia = jdbcTemplate.query(sql, new SecuenciaRowMapper());
-						
-						if(lstSecuencia.size() > 0){
-							sql = "SELECT "+lstSecuencia.get(0).getC_corseq()+".NEXTVAL FROM DUAL";
-							String correlativo = jdbcTemplate.queryForObject(sql, String.class);
-							correlativo = String.format("%08d", Integer.valueOf(correlativo));
+						if(obj.getN_tipo_pasajero() != 3 && obj.getParentesco_id() != 4){
+							/*************** GENERAR EL BOLETO *************/
+							int cont_factura = 0;
+							if(obj.getCliente_id() != null){
+								cont_factura = 1;
+							}
 							
-							String c_numboleto = lstSecuencia.get(0).getC_serie()+"-"+correlativo.trim();
+							int tipcom_val = 0;
 							
-							actualizarVrtVenpasNiubizPagoEfectivoBoletos(obj.getVenpas_id(), c_numboleto);
-							actualizarVrtVenpasNiubizPagoEfectivoHijosBoletos(obj.getVenpas_id(), c_numboleto);
+							if(cont_factura == 1){
+								tipcom_val = 2;
+							}else{
+								tipcom_val = 7;
+							}
 							
-							texto_ventas_concatenado = obj.getVenpas_id() + ";" + texto_ventas_concatenado;
-							texto_archivos_concatenado = c_numboleto + ";" + texto_archivos_concatenado;
-							email_contacto = obj.getC_email_contacto();
+							sql = "select c_corseq, c_serie from vrmespval where agencia_id="+obj.getAgencia_id()+" and tipcom_id="+tipcom_val+" and empresa_id=1 and c_estreg='"+Constantes.ACTIVO+"'";
+							List<Secuencia> lstSecuencia = jdbcTemplate.query(sql, new SecuenciaRowMapper());
+							
+							if(lstSecuencia.size() > 0){
+								sql = "SELECT "+lstSecuencia.get(0).getC_corseq()+".NEXTVAL FROM DUAL";
+								String correlativo = jdbcTemplate.queryForObject(sql, String.class);
+								correlativo = String.format("%08d", Integer.valueOf(correlativo));
+								
+								String c_numboleto = lstSecuencia.get(0).getC_serie()+"-"+correlativo.trim();
+								
+								actualizarVrtVenpasNiubizPagoEfectivoBoletos(obj.getVenpas_id(), c_numboleto);
+								actualizarVrtVenpasNiubizPagoEfectivoHijosBoletos(obj.getVenpas_id(), c_numboleto);
+								
+								texto_ventas_concatenado = obj.getVenpas_id() + ";" + texto_ventas_concatenado;
+								texto_archivos_concatenado = c_numboleto + ";" + texto_archivos_concatenado;
+								email_contacto = obj.getC_email_contacto();
+							}
 						}
 					}
 				}
-			}
+				
+				if(updateVrtVenpas.size() > 0){
+					try{
+						insertSendEmailPasajeros(email_contacto, texto_ventas_concatenado, texto_archivos_concatenado);
+						
+						return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, "Se realizó el Pago Exitosamente.");
+					}catch(Exception e){
+						e.printStackTrace();
+						return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "No se pudo realizar el Pago.");
+					}
+				}				
+			}else if(numOperacion.contains("IZI")){
+				sql = " SELECT "+
+						 "   vp.nro_operation_niubiz, "+
+						 "   vp.venpas_id, "+
+						 "   vp.itinerario_id, "+
+						 "   vp.ruta_id, "+
+						 "   vp.n_numpiso, "+
+						 "   vp.n_numasiento "+
+						" FROM "+
+						"    vrtvenpas vp "+
+						" LEFT JOIN vrmlogecommerce vlog ON vlog.c_nropedido=vp.nro_operation_niubiz "+
+						" WHERE "+
+						"    vp.result_ws_id IN (0, 9, 13) "+
+						"    AND vp.d_fecpar >= SYSDATE - 1 "+
+						"    AND vp.audfecins <= SYSDATE - (5 / 1440) "+
+						"    AND nro_operation_niubiz ='"+numOperacion+"'";
+				
+				List<DatosIziPaySimularPago> listaDatosIziPaySimularPago = jdbcTemplate.query(sql, new DatosIziPaySimularPagoRowMapper());
+						
+				if(listaDatosIziPaySimularPago.size() > 0) {
+					for (DatosIziPaySimularPago datosIziPaySimularPago : listaDatosIziPaySimularPago) {
+						//Busca si su asiento está ocupado o no.
+						sql = " select case when MAX(venpas_id) is null then 0 else 1 end AsientoOcupadoVrtVenpas from vrtvenpas where itinerario_id="+datosIziPaySimularPago.getItinerario_id()+
+							  " and n_numpiso="+datosIziPaySimularPago.getN_numpiso()+" and n_numasiento="+datosIziPaySimularPago.getN_numasiento()+" and tipmov_id not in (5,6,13,14) and tipcom_id in (2, 7) and audfecins >= trunc(sysdate-1)";
+						
+						Integer AsientoOcupadoVrtVenpas = jdbcTemplate.queryForObject(sql, Integer.class);
+						
+						if (AsientoOcupadoVrtVenpas == 0) {
+						    sql = "SELECT CASE WHEN EXISTS ( " +
+						          "    SELECT 1 FROM vrttmpocuasi " +
+						          "    WHERE itinerario_id = " + datosIziPaySimularPago.getItinerario_id() +
+						          "      AND ruta_id = " + datosIziPaySimularPago.getRuta_id() +
+						          "      AND n_numpiso = " + datosIziPaySimularPago.getN_numpiso() +
+						          "      AND n_asiento = " + datosIziPaySimularPago.getN_numasiento() +
+						          "      AND audfecins >= TRUNC(SYSDATE - 1)" +
+						          ") THEN 1 ELSE 0 END AS existe FROM dual";
+						    
+						    Integer AsientoOcupadoVrttmpocuasi = jdbcTemplate.queryForObject(sql, Integer.class);
+						    
+						    if(AsientoOcupadoVrttmpocuasi == 0){
+						    	// Actualizacion de la ventas para darle tiempo
+								sql = 	" SELECT VP.VENPAS_ID,vp.itinerario_id,vp.ruta_id,vp.pasajero_id,"+
+										" vp.n_numasiento,vp.n_numpiso,vp.n_tarifa "+
+										"  FROM PASAJES.VRTVENPAS VP "+
+										" WHERE VP.NRO_OPERATION_NIUBIZ = '"+numOperacion+"'"+
+										" AND VP.RESULT_WS_ID in (0,99,13)";
+												
+								List<VentaPasaje> listaActualizacion = jdbcTemplate.query(sql, new VentaPasaje7RowMapper());
+							
+								if(listaActualizacion.size() > 0) {
+									for (VentaPasaje actualizar : listaActualizacion) {
+										try{
+											//Armando los correlativo
+											sql = " SELECT SEQ_VRMESPVAL_CORRELATIVO_WEB_ID.NEXTVAL FROM DUAL";
+											String correlativo = "0000000"+jdbcTemplate.queryForObject(sql, Long.class);
+											String cserie = "000"+Constantes.ID_SERIE_WEB;
+											
+											sql = " UPDATE VRTVENPAS VP SET VP.c_Numboleto = '"+
+													cserie.substring(cserie.length()-3)+ "-"+correlativo.substring(correlativo.length()-7)+"'"+
+													" ,VP.Tipmov_Id ="+Constantes.ID_TIPMOV_CREDITO+
+													" ,vp.c_tip_reg ='"+Constantes.TIPO_REGISTRO_VENPAS_PAGADO+"'"+
+													" ,vp.RESULT_WS_ID ="+Constantes.RS_WS_AUTORIZADO+
+												" WHERE VP.Venpas_Id ="+actualizar.getIdVenta()+" and vp.RESULT_WS_ID in (0,99,13)";
+											jdbcTemplate.update(sql);
+											
+											sql = " DELETE FROM PASAJES.VRTTMPOCUASI "+ 
+													 " WHERE ITINERARIO_ID ="+actualizar.getIdItinerario()+
+													 "  and RUTA_ID ="+actualizar.getIdRuta()+
+													 "  and USUHARD_ID="+Constantes.ID_HARDWARE_MOVIL_WEB+
+													 "  and USUARIO_ID="+Constantes.ID_USUARIO_MOVIL_WEB+
+													 "  and N_ASIENTO ="+actualizar.getNroAsiento();										
+											jdbcTemplate.update(sql);
+										}catch(Exception e){ e.printStackTrace(); }	
+									}
+									
+									return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, "Se realizó el Pago Exitosamente.");
+								}
+						    }else{
+						    	return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "El asiento se encuentra ocupado en VRTTMPOCUASI.");
+						    }
+						}else{
+							return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "El asiento se encuentra vendido en el VRTVENPAS.");
+						}
+					}
+				}else{
+					return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "No se encontraron registros.");
+				}
+			}else{
+				sql = " select venpas_id, cliente_id, agencia_id, c_tiptra, c_estdoc, c_email_contacto, parentesco_id, n_tipo_pasajero from vrtvenpas "+
+						 " where n_numopeban='"+numOperacion+"' and c_tiptra=2 and c_estdoc is null ";
 			
-			if(updateVrtVenpas.size() > 0){
-				try{
-					insertSendEmailPasajeros(email_contacto, texto_ventas_concatenado, texto_archivos_concatenado);
-					
-					return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, "Se realizó el Pago Exitosamente.");
-				}catch(Exception e){
-					e.printStackTrace();
-					return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "No se pudo realizar el Pago.");
+				List<UpdateVrtVenpas> updateVrtVenpas = jdbcTemplate.query(sql, new UpdateVrtVenpasRowMapper());
+				
+				String email_contacto = "";
+				String texto_ventas_concatenado = "";
+				String texto_archivos_concatenado = "";
+				
+				if(updateVrtVenpas.size() > 0){
+					for(UpdateVrtVenpas obj : updateVrtVenpas){
+						actualizarVrtVenpasNiubizPagoEfectivo(obj.getVenpas_id());
+						if(!numOperacion.contains("PE")){
+							actualizarVrtVenpasNiubizPagoEfectivoTarCre(obj.getVenpas_id());
+						}
+						
+						if(obj.getN_tipo_pasajero() != 3 && obj.getParentesco_id() != 4){
+							/*************** GENERAR EL BOLETO *************/
+							int cont_factura = 0;
+							if(obj.getCliente_id() != null){
+								cont_factura = 1;
+							}
+							
+							int tipcom_val = 0;
+							
+							if(cont_factura == 1){
+								tipcom_val = 2;
+							}else{
+								tipcom_val = 7;
+							}
+							
+							sql = "select c_corseq, c_serie from vrmespval where agencia_id="+obj.getAgencia_id()+" and tipcom_id="+tipcom_val+" and empresa_id=1 and c_estreg='"+Constantes.ACTIVO+"'";
+							List<Secuencia> lstSecuencia = jdbcTemplate.query(sql, new SecuenciaRowMapper());
+							
+							if(lstSecuencia.size() > 0){
+								sql = "SELECT "+lstSecuencia.get(0).getC_corseq()+".NEXTVAL FROM DUAL";
+								String correlativo = jdbcTemplate.queryForObject(sql, String.class);
+								correlativo = String.format("%08d", Integer.valueOf(correlativo));
+								
+								String c_numboleto = lstSecuencia.get(0).getC_serie()+"-"+correlativo.trim();
+								
+								actualizarVrtVenpasNiubizPagoEfectivoBoletos(obj.getVenpas_id(), c_numboleto);
+								actualizarVrtVenpasNiubizPagoEfectivoHijosBoletos(obj.getVenpas_id(), c_numboleto);
+								
+								texto_ventas_concatenado = obj.getVenpas_id() + ";" + texto_ventas_concatenado;
+								texto_archivos_concatenado = c_numboleto + ";" + texto_archivos_concatenado;
+								email_contacto = obj.getC_email_contacto();
+							}
+						}
+					}
+				}
+				
+				if(updateVrtVenpas.size() > 0){
+					try{
+						insertSendEmailPasajeros(email_contacto, texto_ventas_concatenado, texto_archivos_concatenado);
+						
+						return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, "Se realizó el Pago Exitosamente.");
+					}catch(Exception e){
+						e.printStackTrace();
+						return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "No se pudo realizar el Pago.");
+					}
 				}
 			}
 		}catch(Exception e){
@@ -294,10 +455,14 @@ public class VentasDaoImpl implements VentasDao{
 			    // Intentamos descargar
 			    String archivoPdf = obtenerArchivoDesdeApi(pasaje, tipo_documento);
 
-			    // Si no se encontró y era "03", probamos con "07"
-			    if ((archivoPdf == null || archivoPdf.isEmpty()) && "03".equals(tipo_documento)) {
+			    if ((archivoPdf == null || archivoPdf.isEmpty())) {
 			        tipo_documento = "07";
 			        archivoPdf = obtenerArchivoDesdeApi(pasaje, tipo_documento);
+			        
+			        if ((archivoPdf == null || archivoPdf.isEmpty())) {
+				        tipo_documento = "03";
+				        archivoPdf = obtenerArchivoDesdeApi(pasaje, tipo_documento);
+				    }
 			    }
 
 			    // Si finalmente encontramos archivo, lo guardamos
@@ -532,7 +697,7 @@ public class VentasDaoImpl implements VentasDao{
 						 " where "+add_consulta+
 						 " and vp.audfecins >= trunc(sysdate-"+cont+") order by vp.venpas_id asc";
 			
-			//System.out.println(sql);
+			System.out.println(sql);
 			
 			return jdbcTemplate.query(sql, new VentasGeneralPasajerosRowMapper());
 		}catch(Exception e){
@@ -548,7 +713,7 @@ public class VentasDaoImpl implements VentasDao{
 			txt_input = txt_input.toUpperCase();
 			List<Integer> idOriginal = new ArrayList<>();
 			List<VentasGeneralPasajeros> lista = new ArrayList<>();
-			int cont = 1825;		// 5 años
+			int cont = 3650;		// 10 años
 
 			if (txt_input.contains("BB") || txt_input.contains("FB") || txt_input.contains("-")) {				/********************** POR BOLETO o FACTURA **********************/
 			    String sql;
@@ -664,10 +829,10 @@ public class VentasDaoImpl implements VentasDao{
 
 	    return consulta.toString();
 	}
-		
+	
 	@Override
-	public MensajeConfirmacionResult pagoLinkNiubiz(VentasGeneral venta){
-		try {
+	public MensajeConfirmacionResult pagoLinkIziPay(VentasGeneral venta){
+		try{
 			String sql = "";
 			
 			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
@@ -761,13 +926,24 @@ public class VentasDaoImpl implements VentasDao{
 			
 			double montoTotal = 0.0;
 			
+			LocalDateTime base = expirationDateUnaHoraRedondeadaBase();
+			
+			String formatoHoraCompleto = base.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+		    String formatoHoraOracle = base.format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+		    
+		    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+		    String fechaFinal = base.format(formatter);
+		    fechaFinal = resetHoraAInicioDia(fechaFinal);
+		    
 			// Realizar los registros de la venta
 			// INTEGRACION NIUBIZ - NRO DE OPERACION
 			sql = " SELECT LPAD(SEQ_NRO_OPERACION_NIUBIZ_ID.NEXTVAL,12, '0') FROM DUAL";
 			//List<String> nroOperacion = jdbcTemplate.query(sql, new StringRowMapper());
-			String nroOperacion = jdbcTemplate.queryForObject(sql, String.class);
+			String nroOperacionIziPay = jdbcTemplate.queryForObject(sql, String.class);
 						
-			if(!nroOperacion.isEmpty()){
+			if(!nroOperacionIziPay.isEmpty()){
+				
+				nroOperacionIziPay = "IZIPL"+nroOperacionIziPay;
 				
 				for(VentaPasajeros obj : venta.getVentaPasajeros()){
 					// Registro de Ventas de IDA
@@ -778,8 +954,11 @@ public class VentasDaoImpl implements VentasDao{
 						String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaIda.get(0)));
 						BigDecimal idPasajero = buscarIdPasajero(obj.getVentaIda().getPasajero());
 						
-						registraVentasVrtVenpasNiubizPagoEfectivo(idVentaIda.get(0), venta, c_numcontrol, obj.getVentaIda(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
-																  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", "", tipcom_val, idPasajero, obj.getVentaIda().getEmailContacto(), obj.getVentaIda().getTelefonoOpcional());
+						//registraVentasVrtVenpasNiubizPagoEfectivo(idVentaIda.get(0), venta, c_numcontrol, obj.getVentaIda(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacionIziPay, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
+						//										  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", "", tipcom_val, idPasajero, obj.getVentaIda().getEmailContacto(), obj.getVentaIda().getTelefonoOpcional());
+						
+						registraVentasVrtVenpasNiubizPagoEfectivo(idVentaIda.get(0), venta, c_numcontrol, obj.getVentaIda(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacionIziPay, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
+								fechaFinal, formatoHoraOracle, "", tipcom_val, idPasajero, obj.getVentaIda().getEmailContacto(), obj.getVentaIda().getTelefonoOpcional());
 						
 						//Colocando Venpas ID a cada pasajero
 						obj.getVentaIda().setIdVenta(new BigDecimal(idVentaIda.get(0)));
@@ -793,8 +972,11 @@ public class VentasDaoImpl implements VentasDao{
 							String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaVuelta.get(0)));
 							BigDecimal idPasajero = buscarIdPasajero(obj.getVentaVuelta().getPasajero());
 															
-							registraVentasVrtVenpasNiubizPagoEfectivo(idVentaVuelta.get(0), venta, c_numcontrol, obj.getVentaVuelta(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
-																	  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", "", tipcom_val, idPasajero, obj.getVentaVuelta().getEmailContacto(), obj.getVentaVuelta().getTelefonoOpcional());
+							//registraVentasVrtVenpasNiubizPagoEfectivo(idVentaVuelta.get(0), venta, c_numcontrol, obj.getVentaVuelta(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacionIziPay, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
+							//										  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", "", tipcom_val, idPasajero, obj.getVentaVuelta().getEmailContacto(), obj.getVentaVuelta().getTelefonoOpcional());
+							
+							registraVentasVrtVenpasNiubizPagoEfectivo(idVentaVuelta.get(0), venta, c_numcontrol, obj.getVentaVuelta(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacionIziPay, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
+									fechaFinal, formatoHoraOracle, "", tipcom_val, idPasajero, obj.getVentaVuelta().getEmailContacto(), obj.getVentaVuelta().getTelefonoOpcional());
 							
 							//Colocando Venpas ID a cada pasajero
 							obj.getVentaVuelta().setIdVenta(new BigDecimal(idVentaVuelta.get(0)));
@@ -848,8 +1030,10 @@ public class VentasDaoImpl implements VentasDao{
 				
 				montoTotal = venta.getMontoTotal();
 				
+				String montoFormateado = String.format(Locale.US, "%.2f", montoTotal);
+				
 				// INTEGRACIÓN PAGO LINK
-				String nombrePasajero = venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNombre() + " " + venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApePaterno() + " " + venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApeMaterno();
+				//String nombrePasajero = venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNombre() + " " + venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApePaterno() + " " + venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApeMaterno();
 				
 				String textoViajeRuta = "";
 				sql = " select c_origen || '-' || c_destino from vrmruta where ruta_id="+venta.getVentaPasajeros().get(0).getVentaIda().getIdRuta();
@@ -863,25 +1047,369 @@ public class VentasDaoImpl implements VentasDao{
 					textoViajeRuta = texto_origen + " - " + texto_destino + " - " + texto_origen;
 				}
 				
-				ResultPagoLink resultPagoLink = ObtenerInfoOperation(nroOperacion, textoViajeRuta + " | "+venta.getUsuarioSispas(), montoTotal, nombrePasajero, venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto());
+				/*ResultPagoLink resultPagoLink = ObtenerInfoOperation(nroOperacion, textoViajeRuta + " | "+venta.getUsuarioSispas(), montoTotal, nombrePasajero, venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto());
 				
-				String urlPagoLink = resultPagoLink.getLink();
+				String urlPagoLink = resultPagoLink.getLink();*/
 				
-				if(urlPagoLink != "" || urlPagoLink != null){
-					enviarCorreoPasajeroPagoLink(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), urlPagoLink, nroOperacion);
-					actualizarDatosHistorialVentas(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), urlPagoLink, resultPagoLink.getOrderId(), nroOperacion);
-					System.out.println("SE ENVIA CORREO.");
-					return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, nroOperacion, urlPagoLink);
+				//INTEGRACION - IZIPAY
+				MensajeFlagResultIziPay result = IziPay.getTokenIziPay(nroOperacionIziPay);
+				if(result.getResult() == true){
+					//String urlPagoLink = IziPay.getLink(result.getTokenSession(), nroOperacionIziPay, montoFormateado, textoViajeRuta + " "+venta.getUsuarioSispas()+" "+nroOperacionIziPay, venta.getVentaPasajeros().get(0), formatoHoraCompleto);
+					String urlPagoLink = IziPay.getLink(result.getTokenSession(), nroOperacionIziPay, montoFormateado, textoViajeRuta + " en Móvil Bus "+nroOperacionIziPay, venta.getVentaPasajeros().get(0), formatoHoraCompleto);
+					
+					if(urlPagoLink != null && !urlPagoLink.trim().isEmpty()){
+						//System.out.println("urlPagoLink: "+urlPagoLink);
+						//enviarCorreoPasajeroPagoLink(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), urlPagoLink, nroOperacionIziPay);
+						actualizarDatosHistorialVentas(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), urlPagoLink, result.getTokenSession(), nroOperacionIziPay);
+						System.out.println("SE ENVIA CORREO.");
+						return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, nroOperacionIziPay, urlPagoLink);
+					}else{
+						System.out.println("NO SE ENVIA CORREO.");
+						return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, nroOperacionIziPay, "Error al generar el link de IziPay PagoLink, generar nuevamente el Link.");
+					}
 				}else{
-					System.out.println("NO SE ENVIA CORREO.");
-					return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, nroOperacion, "Error al generar el link de PagoLink, generar nuevamente el Link.");
+					return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar el token con IziPay PagoLink.");
 				}
+				
 			}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar la venta, volver realizar la venta 1 .");					//new MensajeFlagResult(Constantes.RESULT_FALSE, "No tiene nro Operacion NIUBIZ.LLAMAR A SISTEMAS")
-		}catch (Exception e){
+		}catch(Exception e){
 			// TODO: handle exception
 			e.printStackTrace();
 			return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar la venta, volver realizar la venta.");							//new MensajeFlagResult(Constantes.RESULT_FALSE, "LLAMAR A SISTEMAS")
 		}
+	}
+	
+	public static String resetHoraAInicioDia(String fechaHora) {
+	    if (fechaHora == null || fechaHora.isEmpty()) {
+	        return fechaHora;
+	    }
+
+	    String[] partes = fechaHora.split(" ");
+	    return partes[0] + " 00:00:00";
+	}
+	
+	public static LocalDateTime expirationDateUnaHoraRedondeadaBase() {
+	    LocalDateTime ahora = LocalDateTime.now().plusHours(1);
+	    int minutos = ahora.getMinute();
+
+	    if (minutos == 0) {
+	        // no cambia
+	    } else if (minutos <= 30) {
+	        ahora = ahora.withMinute(30);
+	    } else {
+	        ahora = ahora.plusHours(1).withMinute(0);
+	    }
+
+	    return ahora.withSecond(0).withNano(0);
+	}
+	
+	@Override
+	public ResponseEntity<String> actualizarVentasPagoLinkIziPay(String signature, String body){
+		try{
+			JSONObject obj = new JSONObject(body);
+	        
+            if (obj.has("code") && "00".equals(obj.getString("code"))) {
+            	JSONObject response = obj.getJSONObject("response");
+
+                // === ORDER NUMBER (IZIPAY INTERN) ===
+                //JSONArray orderArray = response.getJSONArray("order");
+                //JSONObject order = orderArray.getJSONObject(0);
+                //String orderNumber = order.getString("orderNumber"); // LP0002412300001
+
+                JSONArray customFields = response.getJSONArray("customFields");
+                String numOperacion = "";
+
+                for (int i = 0; i < customFields.length(); i++) {
+                    JSONObject field = customFields.getJSONObject(i);
+                    if ("field1".equals(field.getString("name"))) {
+                    	numOperacion = field.getString("value");
+                        break;
+                    }
+                }
+                
+    			String sql = " select venpas_id, cliente_id, agencia_id, c_tiptra, c_estdoc, c_email_contacto, parentesco_id, n_tipo_pasajero from vrtvenpas "+
+				 " where n_numopeban='"+numOperacion+"' and c_tiptra=2 and c_estdoc is null ";
+	
+				List<UpdateVrtVenpas> updateVrtVenpas = jdbcTemplate.query(sql, new UpdateVrtVenpasRowMapper());
+				
+				String email_contacto = "";
+				String texto_ventas_concatenado = "";
+				String texto_archivos_concatenado = "";
+				
+				if(updateVrtVenpas.size() > 0){
+					for(UpdateVrtVenpas obj2 : updateVrtVenpas){
+						actualizarVrtVenpasNiubizPagoEfectivo(obj2.getVenpas_id());
+						actualizarVrtVenpasNiubizPagoEfectivoTarCre(obj2.getVenpas_id());
+						
+						if(obj2.getN_tipo_pasajero() != 3 && obj2.getParentesco_id() != 4){
+							/*************** GENERAR EL BOLETO *************/
+							int cont_factura = 0;
+							if(obj2.getCliente_id() != null){
+								cont_factura = 1;
+							}
+							
+							int tipcom_val = 0;
+							
+							if(cont_factura == 1){
+								tipcom_val = 2;
+							}else{
+								tipcom_val = 7;
+							}
+							
+							sql = "select c_corseq, c_serie from vrmespval where agencia_id="+obj2.getAgencia_id()+" and tipcom_id="+tipcom_val+" and empresa_id=1 and c_estreg='"+Constantes.ACTIVO+"'";
+							List<Secuencia> lstSecuencia = jdbcTemplate.query(sql, new SecuenciaRowMapper());
+							
+							if(lstSecuencia.size() > 0){
+								sql = "SELECT "+lstSecuencia.get(0).getC_corseq()+".NEXTVAL FROM DUAL";
+								String correlativo = jdbcTemplate.queryForObject(sql, String.class);
+								correlativo = String.format("%08d", Integer.valueOf(correlativo));
+								
+								String c_numboleto = lstSecuencia.get(0).getC_serie()+"-"+correlativo.trim();
+								
+								actualizarVrtVenpasNiubizPagoEfectivoBoletos(obj2.getVenpas_id(), c_numboleto);
+								actualizarVrtVenpasNiubizPagoEfectivoHijosBoletos(obj2.getVenpas_id(), c_numboleto);
+								
+								texto_ventas_concatenado = obj2.getVenpas_id() + ";" + texto_ventas_concatenado;
+								texto_archivos_concatenado = c_numboleto + ";" + texto_archivos_concatenado;
+								email_contacto = obj2.getC_email_contacto();
+							}
+						}
+					}
+				}
+				
+				if(updateVrtVenpas.size() > 0){
+					insertSendEmailPasajeros(email_contacto, texto_ventas_concatenado, texto_archivos_concatenado);
+					
+					ResponseEntity.ok("OK");
+				}
+            }
+            
+			return ResponseEntity.ok("OK");
+		} catch (Exception e) {
+	        e.printStackTrace();
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error interno");
+	    }
+	}
+	
+	@Override
+	public MensajeConfirmacionResult pagoLinkNiubiz(VentasGeneral venta){
+//		try {
+//			String sql = "";
+//			
+//			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
+//			List<String> lstPasajero = new ArrayList<String>();
+//			String numDocPasajero = new String();
+//			
+//			for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//				numDocPasajero = new String();
+//				numDocPasajero = obj.getVentaIda().getPasajero().getNumDocumento();
+//				lstPasajero.add(numDocPasajero);
+//				
+//				if(obj.getVentaVuelta() != null ) {
+//					numDocPasajero = new String();
+//					numDocPasajero = obj.getVentaVuelta().getPasajero().getNumDocumento();
+//					lstPasajero.add(numDocPasajero);
+//				}
+//			}
+//			
+//			Set<String> s= new HashSet<String>();
+//		    s.addAll(lstPasajero);
+//		    lstPasajero = new ArrayList<String>();
+//		    lstPasajero.addAll(s);
+//		    
+//		    for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//				for(int a=0; a<lstPasajero.size(); a++){
+//					int cont = 0;
+//					
+//			    	if(obj.getVentaIda().getPasajero().getNumDocumento().equals(lstPasajero.get(a))){
+//			    		actualizarPasajeroNew(obj.getVentaIda().getPasajero());
+//			    		actualizarTelefonoPasajeroNew(obj.getVentaIda().getPasajero().getIdTipoDocumento(), obj.getVentaIda().getPasajero().getNumDocumento(), obj.getVentaIda().getTelefonoOpcional());
+//			    		cont = 1;
+//			    	}
+//			    	
+//			    	if(obj.getVentaVuelta() != null && cont==0){
+//						if(obj.getVentaVuelta().getPasajero().getNumDocumento().equals(lstPasajero.get(a))){
+//							actualizarPasajeroNew(obj.getVentaVuelta().getPasajero());
+//							actualizarTelefonoPasajeroNew(obj.getVentaVuelta().getPasajero().getIdTipoDocumento(), obj.getVentaVuelta().getPasajero().getNumDocumento(), obj.getVentaVuelta().getTelefonoOpcional());
+//				    	}
+//					}
+//			    }
+//			}
+//			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
+//			
+//			/*********************** ELIMINAR RESERVA DE ASIENTO ***********************/
+//			for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//				if(obj.getVentaIda() != null){
+//					try{
+//						String sql_asientos_ida = " delete from pasajes.VRTTMPOCUASI TMP "+
+//					   			" where tmp.itinerario_id = "+obj.getVentaIda().getIdItinerario()+
+//					   			" and tmp.ruta_id = "+obj.getVentaIda().getIdRuta()+
+//					   			" and tmp.N_ASIENTO ="+obj.getVentaIda().getNroAsiento()+
+//					   			" and tmp.N_NUMPISO ="+obj.getVentaIda().getNroPiso()+
+//					   			" AND tmp.usuario_id="+venta.getIdUsuarioSispas()+
+//					   			" AND tmp.usuhard_id="+venta.getIdHardwareSispas();
+//						
+//						jdbcTemplate.update(sql_asientos_ida);
+//					}catch(Exception ex){ex.printStackTrace();}
+//				}
+//				
+//				if(obj.getVentaVuelta() != null){
+//					try{
+//					String sql_asientos_vuelta = " delete from pasajes.VRTTMPOCUASI TMP "+
+//				   			" where tmp.itinerario_id = "+obj.getVentaVuelta().getIdItinerario()+
+//				   			" and tmp.ruta_id = "+obj.getVentaVuelta().getIdRuta()+
+//				   			" and tmp.N_ASIENTO ="+obj.getVentaVuelta().getNroAsiento()+
+//				   			" and tmp.N_NUMPISO ="+obj.getVentaVuelta().getNroPiso()+
+//				   			" AND tmp.usuario_id="+venta.getIdUsuarioSispas()+
+//				   			" AND tmp.usuhard_id="+venta.getIdHardwareSispas();
+//					
+//					jdbcTemplate.update(sql_asientos_vuelta);
+//					}catch(Exception ex){ex.printStackTrace();}
+//				}
+//			}
+//			/*********************** ELIMINAR RESERVA DE ASIENTO ***********************/
+//			
+//			int cont_factura = 0;
+//			
+//			// Actualizar el cliente por cada Venta
+//			if(venta.getCliente() != null){
+//				actualizarCliente(venta.getCliente());
+//				cont_factura = 1;
+//			}
+//			
+//			int tipcom_val = 0;
+//			
+//			if(cont_factura == 1){
+//				tipcom_val = 2;
+//			}else{
+//				tipcom_val = 7;
+//			}
+//			
+//			double montoTotal = 0.0;
+//			
+//			// Realizar los registros de la venta
+//			// INTEGRACION NIUBIZ - NRO DE OPERACION
+//			sql = " SELECT LPAD(SEQ_NRO_OPERACION_NIUBIZ_ID.NEXTVAL,12, '0') FROM DUAL";
+//			//List<String> nroOperacion = jdbcTemplate.query(sql, new StringRowMapper());
+//			String nroOperacion = jdbcTemplate.queryForObject(sql, String.class);
+//						
+//			if(!nroOperacion.isEmpty()){
+//				
+//				for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//					// Registro de Ventas de IDA
+//					sql = "SELECT SEQ_VRTVENPAS_ID.NEXTVAL FROM DUAL";
+//					List<Long> idVentaIda = jdbcTemplate.query(sql, new LongRowMapper());
+//					
+//					if(idVentaIda.size() > 0){
+//						String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaIda.get(0)));
+//						BigDecimal idPasajero = buscarIdPasajero(obj.getVentaIda().getPasajero());
+//						
+//						registraVentasVrtVenpasNiubizPagoEfectivo(idVentaIda.get(0), venta, c_numcontrol, obj.getVentaIda(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
+//																  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", "", tipcom_val, idPasajero, obj.getVentaIda().getEmailContacto(), obj.getVentaIda().getTelefonoOpcional());
+//						
+//						//Colocando Venpas ID a cada pasajero
+//						obj.getVentaIda().setIdVenta(new BigDecimal(idVentaIda.get(0)));
+//					}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "PROBLEMAS CON NRO ID DE VENTAS IDA.");
+//					
+//					// Registro de Ventas de VUELTA
+//					if(obj.getVentaVuelta() != null){
+//						sql = "SELECT SEQ_VRTVENPAS_ID.NEXTVAL  FROM DUAL";
+//						List<Long> idVentaVuelta = jdbcTemplate.query(sql, new LongRowMapper());
+//						if(idVentaVuelta.size() > 0){
+//							String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaVuelta.get(0)));
+//							BigDecimal idPasajero = buscarIdPasajero(obj.getVentaVuelta().getPasajero());
+//															
+//							registraVentasVrtVenpasNiubizPagoEfectivo(idVentaVuelta.get(0), venta, c_numcontrol, obj.getVentaVuelta(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_PAGO_LINK, 
+//																	  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", "", tipcom_val, idPasajero, obj.getVentaVuelta().getEmailContacto(), obj.getVentaVuelta().getTelefonoOpcional());
+//							
+//							//Colocando Venpas ID a cada pasajero
+//							obj.getVentaVuelta().setIdVenta(new BigDecimal(idVentaVuelta.get(0)));
+//						}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "PROBLEMAS CON NRO ID DE VENTAS VUELTA.");
+//					}
+//				}
+//				
+//				//ACTUALIZAR VENPAS_IDPARENTS | RELACION PADRE - HIJO
+//				List<Integer> list_idventas = new ArrayList<>();
+//				
+//				for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//					if(obj.getVentaIda().getIdParentesco() == 4 || obj.getVentaIda().getIdParentesco() == 5){									// SI ES HIJO O CARTA APODERADO
+//						for(VentaPasajeros obj2 : venta.getVentaPasajeros()){
+//							if(obj2.getVentaIda().getPasajero().getNumDocumento().equals(obj.getVentaIda().getDniApoderado())){					// COMPARA CON EL DNI DE LOS PADRES-MADRES Y APODERADOS
+//								String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDPARENTS = "+obj2.getVentaIda().getIdVenta()+" where VENPAS_ID = "+obj.getVentaIda().getIdVenta();
+//								jdbcTemplate.update(sql_update);
+//								
+//								list_idventas.add(Integer.valueOf(obj2.getVentaIda().getIdVenta().intValue()));
+//							}
+//						}
+//					}
+//					
+//					if(obj.getVentaVuelta() != null) {
+//						if(obj.getVentaVuelta().getIdParentesco() == 4 || obj.getVentaVuelta().getIdParentesco() == 5){							// SI ES HIJO O CARTA APODERADO
+//							for(VentaPasajeros obj2 : venta.getVentaPasajeros()){
+//								if(obj2.getVentaVuelta().getPasajero().getNumDocumento().equals(obj.getVentaVuelta().getDniApoderado())){		// COMPARA CON EL DNI DE LOS PADRES-MADRES Y APODERADOS
+//									String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDPARENTS = "+obj2.getVentaVuelta().getIdVenta()+" where VENPAS_ID = "+obj.getVentaVuelta().getIdVenta();
+//									jdbcTemplate.update(sql_update);
+//								}
+//							}
+//						}
+//					}
+//				}
+//				
+//				if(list_idventas.size() > 0){
+//					//ACTUALIZAR VENPAS_IDTX | RELACION PADRE - HIJO
+//					Integer menorValor = list_idventas.stream().min(Comparator.comparing( v->v)).orElseThrow(NoSuchElementException::new);
+//					
+//					for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//						if(obj.getVentaIda() != null) {
+//							String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDTX = "+menorValor+" where VENPAS_ID = "+obj.getVentaIda().getIdVenta();
+//							jdbcTemplate.update(sql_update);
+//						}
+//						
+//						if(obj.getVentaVuelta() != null) {
+//							String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDTX = "+menorValor+" where VENPAS_ID = "+obj.getVentaVuelta().getIdVenta();
+//							jdbcTemplate.update(sql_update);
+//						}
+//					}
+//				}
+//				
+//				montoTotal = venta.getMontoTotal();
+//				
+//				// INTEGRACIÓN PAGO LINK
+//				String nombrePasajero = venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNombre() + " " + venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApePaterno() + " " + venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApeMaterno();
+//				
+//				String textoViajeRuta = "";
+//				sql = " select c_origen || '-' || c_destino from vrmruta where ruta_id="+venta.getVentaPasajeros().get(0).getVentaIda().getIdRuta();
+//				List<String> textoRuta = jdbcTemplate.query(sql, new StringRowMapper());
+//				String[] parts = textoRuta.get(0).split("-");
+//				String texto_origen = parts[0];
+//				String texto_destino = parts[1];
+//				
+//				textoViajeRuta = texto_origen + " - " + texto_destino;
+//				if(venta.getVentaPasajeros().get(0).getVentaVuelta() != null){
+//					textoViajeRuta = texto_origen + " - " + texto_destino + " - " + texto_origen;
+//				}
+//				
+//				ResultPagoLink resultPagoLink = ObtenerInfoOperation(nroOperacion, textoViajeRuta + " | "+venta.getUsuarioSispas(), montoTotal, nombrePasajero, venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto());
+//				
+//				String urlPagoLink = resultPagoLink.getLink();
+//				
+//				if(urlPagoLink != "" || urlPagoLink != null){
+//					enviarCorreoPasajeroPagoLink(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), urlPagoLink, nroOperacion);
+//					actualizarDatosHistorialVentas(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), urlPagoLink, resultPagoLink.getOrderId(), nroOperacion);
+//					System.out.println("SE ENVIA CORREO.");
+//					return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, nroOperacion, urlPagoLink);
+//				}else{
+//					System.out.println("NO SE ENVIA CORREO.");
+//					return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, nroOperacion, "Error al generar el link de PagoLink, generar nuevamente el Link.");
+//				}
+//			}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar la venta, volver realizar la venta 1 .");					//new MensajeFlagResult(Constantes.RESULT_FALSE, "No tiene nro Operacion NIUBIZ.LLAMAR A SISTEMAS")
+//		}catch (Exception e){
+//			// TODO: handle exception
+//			e.printStackTrace();
+//			return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar la venta, volver realizar la venta.");							//new MensajeFlagResult(Constantes.RESULT_FALSE, "LLAMAR A SISTEMAS")
+//		}
+		
+		return null;
 	}
 	
 	@Override
@@ -925,214 +1453,216 @@ public class VentasDaoImpl implements VentasDao{
 	@Override
 	public MensajeConfirmacionResult pagoLinkPagoEfectivo(VentasGeneral venta){
 		
-		try {
-			String sql = "";
-			
-			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
-			List<String> lstPasajero = new ArrayList<String>();
-			String numDocPasajero = new String();
-			
-			for(VentaPasajeros obj : venta.getVentaPasajeros()){
-				numDocPasajero = new String();
-				numDocPasajero = obj.getVentaIda().getPasajero().getNumDocumento();
-				lstPasajero.add(numDocPasajero);
-				
-				if(obj.getVentaVuelta() != null ) {
-					numDocPasajero = new String();
-					numDocPasajero = obj.getVentaVuelta().getPasajero().getNumDocumento();
-					lstPasajero.add(numDocPasajero);
-				}
-			}
-			
-			Set<String> s= new HashSet<String>();
-		    s.addAll(lstPasajero);
-		    lstPasajero = new ArrayList<String>();
-		    lstPasajero.addAll(s);
-		    
-		    for(VentaPasajeros obj : venta.getVentaPasajeros()){
-				for(int a=0; a<lstPasajero.size(); a++){
-					int cont = 0;
-					
-			    	if(obj.getVentaIda().getPasajero().getNumDocumento().equals(lstPasajero.get(a))){
-			    		actualizarPasajeroNew(obj.getVentaIda().getPasajero());
-			    		actualizarTelefonoPasajeroNew(obj.getVentaIda().getPasajero().getIdTipoDocumento(), obj.getVentaIda().getPasajero().getNumDocumento(), obj.getVentaIda().getTelefonoOpcional());
-			    		cont = 1;
-			    	}
-			    	
-			    	if(obj.getVentaVuelta() != null && cont==0){
-						if(obj.getVentaVuelta().getPasajero().getNumDocumento().equals(lstPasajero.get(a))){
-							actualizarPasajeroNew(obj.getVentaVuelta().getPasajero());
-							actualizarTelefonoPasajeroNew(obj.getVentaVuelta().getPasajero().getIdTipoDocumento(), obj.getVentaVuelta().getPasajero().getNumDocumento(), obj.getVentaVuelta().getTelefonoOpcional());
-				    	}
-					}
-			    }
-			}
-			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
-			
-			/*********************** ELIMINAR RESERVA DE ASIENTO ***********************/
-			for(VentaPasajeros obj : venta.getVentaPasajeros()){
-				if(obj.getVentaIda() != null){
-					try{
-						String sql_asientos_ida = " delete from pasajes.VRTTMPOCUASI TMP "+
-					   			" where tmp.itinerario_id = "+obj.getVentaIda().getIdItinerario()+
-					   			" and tmp.ruta_id = "+obj.getVentaIda().getIdRuta()+
-					   			" and tmp.N_ASIENTO ="+obj.getVentaIda().getNroAsiento()+
-					   			" and tmp.N_NUMPISO ="+obj.getVentaIda().getNroPiso()+
-					   			" AND tmp.usuario_id="+venta.getIdUsuarioSispas()+
-					   			" AND tmp.usuhard_id="+venta.getIdHardwareSispas();
-						
-						jdbcTemplate.update(sql_asientos_ida);
-					}catch(Exception ex){ex.printStackTrace();}
-				}
-				
-				if(obj.getVentaVuelta() != null){
-					try{
-					String sql_asientos_vuelta = " delete from pasajes.VRTTMPOCUASI TMP "+
-				   			" where tmp.itinerario_id = "+obj.getVentaVuelta().getIdItinerario()+
-				   			" and tmp.ruta_id = "+obj.getVentaVuelta().getIdRuta()+
-				   			" and tmp.N_ASIENTO ="+obj.getVentaVuelta().getNroAsiento()+
-				   			" and tmp.N_NUMPISO ="+obj.getVentaVuelta().getNroPiso()+
-				   			" AND tmp.usuario_id="+venta.getIdUsuarioSispas()+
-				   			" AND tmp.usuhard_id="+venta.getIdHardwareSispas();
-					
-					jdbcTemplate.update(sql_asientos_vuelta);
-					}catch(Exception ex){ex.printStackTrace();}
-				}
-			}
-			/*********************** ELIMINAR RESERVA DE ASIENTO ***********************/
-			
-			int cont_factura = 0;
-			
-			// Actualizar el cliente por cada Venta
-			if(venta.getCliente() != null){
-				actualizarCliente(venta.getCliente());
-				cont_factura = 1;
-			}
-			
-			int tipcom_val = 0;
-			
-			if(cont_factura == 1){
-				tipcom_val = 2;
-			}else{
-				tipcom_val = 7;
-			}
-			
-			double montoTotal = 0.0;
-						
-			// Inicio -- actualizar temporal ocupacion de asiento ( 2 horas )
-			// Generador del CIP
-			// INTEGRACION PAGOEFECTIVO - NRO DE OPERACION		
-			sql = " SELECT 'PE'||LPAD(SEQ_NRO_OPE_PAGOEFECTIVO_ID.NEXTVAL,12, '0') FROM DUAL";
-			String nroOperacion = jdbcTemplate.queryForObject(sql, String.class);
-			if(!nroOperacion.isEmpty()) {
-				RequestPagoEfectivo rqPE = new RequestPagoEfectivo(nroOperacion, 
-												(venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getIdTipoDocumento()==Constantes.ID_TIPDOC_DNI?
-													"DNI":"PAS"), 
-												venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNumDocumento(),
-												venta.getVentaPasajeros().get(0).getVentaIda().getTelefonoOpcional(), 
-												venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNombre(), 
-												venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApePaterno(), 
-												venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), 
-												venta.getMontoTotal(),venta.getCodePaisPhone());
-				JsonRest jscip= PagoEfectivo.ObtenerCip(rqPE);
-				if(jscip != null) {
-					JsonObject resultado = new JsonParser().parse(jscip.getResponse()).getAsJsonObject();
-					
-					String cipendiente = resultado.get("data").getAsJsonObject().get("cip").getAsString();
-					
-					for(VentaPasajeros obj : venta.getVentaPasajeros()){
-						// Registro de Ventas de IDA
-						sql = "SELECT SEQ_VRTVENPAS_ID.NEXTVAL FROM DUAL";
-						List<Long> idVentaIda = jdbcTemplate.query(sql, new LongRowMapper());
-						
-						if(idVentaIda.size() > 0){
-							String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaIda.get(0)));
-							BigDecimal idPasajero = buscarIdPasajero(obj.getVentaIda().getPasajero());
-							
-							registraVentasVrtVenpasNiubizPagoEfectivo(idVentaIda.get(0), venta, c_numcontrol, obj.getVentaIda(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_ORBIS, 
-																	  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", cipendiente, tipcom_val, idPasajero, obj.getVentaIda().getEmailContacto(), obj.getVentaIda().getTelefonoOpcional());
-							
-							//Colocando Venpas ID a cada pasajero
-							obj.getVentaIda().setIdVenta(new BigDecimal(idVentaIda.get(0)));
-						}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "PROBLEMAS CON NRO ID DE VENTAS IDA.");
-						
-						// Registro de Ventas de VUELTA
-						if(obj.getVentaVuelta() != null){
-							sql = "SELECT SEQ_VRTVENPAS_ID.NEXTVAL  FROM DUAL";
-							List<Long> idVentaVuelta = jdbcTemplate.query(sql, new LongRowMapper());
-							if(idVentaVuelta.size() > 0){
-								String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaVuelta.get(0)));
-								BigDecimal idPasajero = buscarIdPasajero(obj.getVentaVuelta().getPasajero());
-																
-								registraVentasVrtVenpasNiubizPagoEfectivo(idVentaVuelta.get(0), venta, c_numcontrol, obj.getVentaVuelta(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_ORBIS, 
-																		  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", cipendiente, tipcom_val, idPasajero, obj.getVentaVuelta().getEmailContacto(), obj.getVentaVuelta().getTelefonoOpcional());
-								
-								//Colocando Venpas ID a cada pasajero
-								obj.getVentaVuelta().setIdVenta(new BigDecimal(idVentaVuelta.get(0)));
-							}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "PROBLEMAS CON NRO ID DE VENTAS VUELTA.");
-						}
-					}
-										
-					//ACTUALIZAR VENPAS_IDPARENTS | RELACION PADRE - HIJO
-					List<Integer> list_idventas = new ArrayList<>();
-					
-					for(VentaPasajeros obj : venta.getVentaPasajeros()){
-						if(obj.getVentaIda().getIdParentesco() == 4 || obj.getVentaIda().getIdParentesco() == 5){									// SI ES HIJO O CARTA APODERADO
-							for(VentaPasajeros obj2 : venta.getVentaPasajeros()){
-								if(obj2.getVentaIda().getPasajero().getNumDocumento().equals(obj.getVentaIda().getDniApoderado())){					// COMPARA CON EL DNI DE LOS PADRES-MADRES Y APODERADOS
-									String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDPARENTS = "+obj2.getVentaIda().getIdVenta()+" where VENPAS_ID = "+obj.getVentaIda().getIdVenta();
-									jdbcTemplate.update(sql_update);
-									
-									list_idventas.add(Integer.valueOf(obj2.getVentaIda().getIdVenta().intValue()));
-								}
-							}
-						}
-						
-						if(obj.getVentaVuelta() != null) {
-							if(obj.getVentaVuelta().getIdParentesco() == 4 || obj.getVentaVuelta().getIdParentesco() == 5){							// SI ES HIJO O CARTA APODERADO
-								for(VentaPasajeros obj2 : venta.getVentaPasajeros()){
-									if(obj2.getVentaVuelta().getPasajero().getNumDocumento().equals(obj.getVentaVuelta().getDniApoderado())){		// COMPARA CON EL DNI DE LOS PADRES-MADRES Y APODERADOS
-										String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDPARENTS = "+obj2.getVentaVuelta().getIdVenta()+" where VENPAS_ID = "+obj.getVentaVuelta().getIdVenta();
-										jdbcTemplate.update(sql_update);
-									}
-								}
-							}
-						}
-					}
-					
-					if(list_idventas.size() > 0){
-						//ACTUALIZAR VENPAS_IDTX | RELACION PADRE - HIJO
-						Integer menorValor = list_idventas.stream().min(Comparator.comparing( v->v)).orElseThrow(NoSuchElementException::new);
-						
-						for(VentaPasajeros obj : venta.getVentaPasajeros()){
-							if(obj.getVentaIda() != null) {
-								String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDTX = "+menorValor+" where VENPAS_ID = "+obj.getVentaIda().getIdVenta();
-								jdbcTemplate.update(sql_update);
-							}
-							
-							if(obj.getVentaVuelta() != null) {
-								String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDTX = "+menorValor+" where VENPAS_ID = "+obj.getVentaVuelta().getIdVenta();
-								jdbcTemplate.update(sql_update);
-							}
-						}
-					}
-					
-					montoTotal = venta.getMontoTotal();
-					
-					actualizarDatosHistorialVentas(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), "", cipendiente, nroOperacion);
-					
-					return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, nroOperacion, new ResponseGeneradorCip(nroOperacion, resultado.get("data").getAsJsonObject().get("cipUrl").getAsString().replace(Constantes.URL_BASE_RESPUESTAPEF,"").replace(".html",""), resultado.get("data").getAsJsonObject().get("cip").getAsString(), ""));
-				}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, nroOperacion, "Error al generar el CIP de PagoEfectivo.");
-			}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar el Correlativo de PagoEfectivo.");
-		}catch (Exception e) {
-			// TODO: handle exception
-			e.printStackTrace();
-			return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error - pagoLinkPagoEfectivo.");
-		}
+//		try {
+//			String sql = "";
+//			
+//			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
+//			List<String> lstPasajero = new ArrayList<String>();
+//			String numDocPasajero = new String();
+//			
+//			for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//				numDocPasajero = new String();
+//				numDocPasajero = obj.getVentaIda().getPasajero().getNumDocumento();
+//				lstPasajero.add(numDocPasajero);
+//				
+//				if(obj.getVentaVuelta() != null ) {
+//					numDocPasajero = new String();
+//					numDocPasajero = obj.getVentaVuelta().getPasajero().getNumDocumento();
+//					lstPasajero.add(numDocPasajero);
+//				}
+//			}
+//			
+//			Set<String> s= new HashSet<String>();
+//		    s.addAll(lstPasajero);
+//		    lstPasajero = new ArrayList<String>();
+//		    lstPasajero.addAll(s);
+//		    
+//		    for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//				for(int a=0; a<lstPasajero.size(); a++){
+//					int cont = 0;
+//					
+//			    	if(obj.getVentaIda().getPasajero().getNumDocumento().equals(lstPasajero.get(a))){
+//			    		actualizarPasajeroNew(obj.getVentaIda().getPasajero());
+//			    		actualizarTelefonoPasajeroNew(obj.getVentaIda().getPasajero().getIdTipoDocumento(), obj.getVentaIda().getPasajero().getNumDocumento(), obj.getVentaIda().getTelefonoOpcional());
+//			    		cont = 1;
+//			    	}
+//			    	
+//			    	if(obj.getVentaVuelta() != null && cont==0){
+//						if(obj.getVentaVuelta().getPasajero().getNumDocumento().equals(lstPasajero.get(a))){
+//							actualizarPasajeroNew(obj.getVentaVuelta().getPasajero());
+//							actualizarTelefonoPasajeroNew(obj.getVentaVuelta().getPasajero().getIdTipoDocumento(), obj.getVentaVuelta().getPasajero().getNumDocumento(), obj.getVentaVuelta().getTelefonoOpcional());
+//				    	}
+//					}
+//			    }
+//			}
+//			/*------------------------ Evitar Duplicidad de Pasajeros -----------------------*/
+//			
+//			/*********************** ELIMINAR RESERVA DE ASIENTO ***********************/
+//			for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//				if(obj.getVentaIda() != null){
+//					try{
+//						String sql_asientos_ida = " delete from pasajes.VRTTMPOCUASI TMP "+
+//					   			" where tmp.itinerario_id = "+obj.getVentaIda().getIdItinerario()+
+//					   			" and tmp.ruta_id = "+obj.getVentaIda().getIdRuta()+
+//					   			" and tmp.N_ASIENTO ="+obj.getVentaIda().getNroAsiento()+
+//					   			" and tmp.N_NUMPISO ="+obj.getVentaIda().getNroPiso()+
+//					   			" AND tmp.usuario_id="+venta.getIdUsuarioSispas()+
+//					   			" AND tmp.usuhard_id="+venta.getIdHardwareSispas();
+//						
+//						jdbcTemplate.update(sql_asientos_ida);
+//					}catch(Exception ex){ex.printStackTrace();}
+//				}
+//				
+//				if(obj.getVentaVuelta() != null){
+//					try{
+//					String sql_asientos_vuelta = " delete from pasajes.VRTTMPOCUASI TMP "+
+//				   			" where tmp.itinerario_id = "+obj.getVentaVuelta().getIdItinerario()+
+//				   			" and tmp.ruta_id = "+obj.getVentaVuelta().getIdRuta()+
+//				   			" and tmp.N_ASIENTO ="+obj.getVentaVuelta().getNroAsiento()+
+//				   			" and tmp.N_NUMPISO ="+obj.getVentaVuelta().getNroPiso()+
+//				   			" AND tmp.usuario_id="+venta.getIdUsuarioSispas()+
+//				   			" AND tmp.usuhard_id="+venta.getIdHardwareSispas();
+//					
+//					jdbcTemplate.update(sql_asientos_vuelta);
+//					}catch(Exception ex){ex.printStackTrace();}
+//				}
+//			}
+//			/*********************** ELIMINAR RESERVA DE ASIENTO ***********************/
+//			
+//			int cont_factura = 0;
+//			
+//			// Actualizar el cliente por cada Venta
+//			if(venta.getCliente() != null){
+//				actualizarCliente(venta.getCliente());
+//				cont_factura = 1;
+//			}
+//			
+//			int tipcom_val = 0;
+//			
+//			if(cont_factura == 1){
+//				tipcom_val = 2;
+//			}else{
+//				tipcom_val = 7;
+//			}
+//			
+//			double montoTotal = 0.0;
+//						
+//			// Inicio -- actualizar temporal ocupacion de asiento ( 2 horas )
+//			// Generador del CIP
+//			// INTEGRACION PAGOEFECTIVO - NRO DE OPERACION		
+//			sql = " SELECT 'PE'||LPAD(SEQ_NRO_OPE_PAGOEFECTIVO_ID.NEXTVAL,12, '0') FROM DUAL";
+//			String nroOperacion = jdbcTemplate.queryForObject(sql, String.class);
+//			if(!nroOperacion.isEmpty()) {
+//				RequestPagoEfectivo rqPE = new RequestPagoEfectivo(nroOperacion, 
+//												(venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getIdTipoDocumento()==Constantes.ID_TIPDOC_DNI?
+//													"DNI":"PAS"), 
+//												venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNumDocumento(),
+//												venta.getVentaPasajeros().get(0).getVentaIda().getTelefonoOpcional(), 
+//												venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getNombre(), 
+//												venta.getVentaPasajeros().get(0).getVentaIda().getPasajero().getApePaterno(), 
+//												venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), 
+//												venta.getMontoTotal(),venta.getCodePaisPhone());
+//				JsonRest jscip= PagoEfectivo.ObtenerCip(rqPE);
+//				if(jscip != null) {
+//					JsonObject resultado = new JsonParser().parse(jscip.getResponse()).getAsJsonObject();
+//					
+//					String cipendiente = resultado.get("data").getAsJsonObject().get("cip").getAsString();
+//					
+//					for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//						// Registro de Ventas de IDA
+//						sql = "SELECT SEQ_VRTVENPAS_ID.NEXTVAL FROM DUAL";
+//						List<Long> idVentaIda = jdbcTemplate.query(sql, new LongRowMapper());
+//						
+//						if(idVentaIda.size() > 0){
+//							String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaIda.get(0)));
+//							BigDecimal idPasajero = buscarIdPasajero(obj.getVentaIda().getPasajero());
+//							
+//							registraVentasVrtVenpasNiubizPagoEfectivo(idVentaIda.get(0), venta, c_numcontrol, obj.getVentaIda(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_ORBIS, 
+//																	  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", cipendiente, tipcom_val, idPasajero, obj.getVentaIda().getEmailContacto(), obj.getVentaIda().getTelefonoOpcional());
+//							
+//							//Colocando Venpas ID a cada pasajero
+//							obj.getVentaIda().setIdVenta(new BigDecimal(idVentaIda.get(0)));
+//						}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "PROBLEMAS CON NRO ID DE VENTAS IDA.");
+//						
+//						// Registro de Ventas de VUELTA
+//						if(obj.getVentaVuelta() != null){
+//							sql = "SELECT SEQ_VRTVENPAS_ID.NEXTVAL  FROM DUAL";
+//							List<Long> idVentaVuelta = jdbcTemplate.query(sql, new LongRowMapper());
+//							if(idVentaVuelta.size() > 0){
+//								String c_numcontrol = generateControlNumber(decimalToHexadecimal(idVentaVuelta.get(0)));
+//								BigDecimal idPasajero = buscarIdPasajero(obj.getVentaVuelta().getPasajero());
+//																
+//								registraVentasVrtVenpasNiubizPagoEfectivo(idVentaVuelta.get(0), venta, c_numcontrol, obj.getVentaVuelta(), (obj.getVentaVuelta() != null), idVentaIda.get(0), nroOperacion, Constantes.ID_TIP_FORMA_PAGO_ORBIS, 
+//																		  "(TO_CHAR(SYSDATE+(60/1440), 'HH24:MI:SS'))", cipendiente, tipcom_val, idPasajero, obj.getVentaVuelta().getEmailContacto(), obj.getVentaVuelta().getTelefonoOpcional());
+//								
+//								//Colocando Venpas ID a cada pasajero
+//								obj.getVentaVuelta().setIdVenta(new BigDecimal(idVentaVuelta.get(0)));
+//							}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "PROBLEMAS CON NRO ID DE VENTAS VUELTA.");
+//						}
+//					}
+//										
+//					//ACTUALIZAR VENPAS_IDPARENTS | RELACION PADRE - HIJO
+//					List<Integer> list_idventas = new ArrayList<>();
+//					
+//					for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//						if(obj.getVentaIda().getIdParentesco() == 4 || obj.getVentaIda().getIdParentesco() == 5){									// SI ES HIJO O CARTA APODERADO
+//							for(VentaPasajeros obj2 : venta.getVentaPasajeros()){
+//								if(obj2.getVentaIda().getPasajero().getNumDocumento().equals(obj.getVentaIda().getDniApoderado())){					// COMPARA CON EL DNI DE LOS PADRES-MADRES Y APODERADOS
+//									String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDPARENTS = "+obj2.getVentaIda().getIdVenta()+" where VENPAS_ID = "+obj.getVentaIda().getIdVenta();
+//									jdbcTemplate.update(sql_update);
+//									
+//									list_idventas.add(Integer.valueOf(obj2.getVentaIda().getIdVenta().intValue()));
+//								}
+//							}
+//						}
+//						
+//						if(obj.getVentaVuelta() != null) {
+//							if(obj.getVentaVuelta().getIdParentesco() == 4 || obj.getVentaVuelta().getIdParentesco() == 5){							// SI ES HIJO O CARTA APODERADO
+//								for(VentaPasajeros obj2 : venta.getVentaPasajeros()){
+//									if(obj2.getVentaVuelta().getPasajero().getNumDocumento().equals(obj.getVentaVuelta().getDniApoderado())){		// COMPARA CON EL DNI DE LOS PADRES-MADRES Y APODERADOS
+//										String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDPARENTS = "+obj2.getVentaVuelta().getIdVenta()+" where VENPAS_ID = "+obj.getVentaVuelta().getIdVenta();
+//										jdbcTemplate.update(sql_update);
+//									}
+//								}
+//							}
+//						}
+//					}
+//					
+//					if(list_idventas.size() > 0){
+//						//ACTUALIZAR VENPAS_IDTX | RELACION PADRE - HIJO
+//						Integer menorValor = list_idventas.stream().min(Comparator.comparing( v->v)).orElseThrow(NoSuchElementException::new);
+//						
+//						for(VentaPasajeros obj : venta.getVentaPasajeros()){
+//							if(obj.getVentaIda() != null) {
+//								String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDTX = "+menorValor+" where VENPAS_ID = "+obj.getVentaIda().getIdVenta();
+//								jdbcTemplate.update(sql_update);
+//							}
+//							
+//							if(obj.getVentaVuelta() != null) {
+//								String sql_update = " UPDATE pasajes.VRTVENPAS set VENPAS_IDTX = "+menorValor+" where VENPAS_ID = "+obj.getVentaVuelta().getIdVenta();
+//								jdbcTemplate.update(sql_update);
+//							}
+//						}
+//					}
+//					
+//					montoTotal = venta.getMontoTotal();
+//					
+//					actualizarDatosHistorialVentas(venta.getVentaPasajeros().get(0).getVentaIda().getEmailContacto(), "", cipendiente, nroOperacion);
+//					
+//					return new MensajeConfirmacionResult(Constantes.RESULT_TRUE, nroOperacion, new ResponseGeneradorCip(nroOperacion, resultado.get("data").getAsJsonObject().get("cipUrl").getAsString().replace(Constantes.URL_BASE_RESPUESTAPEF,"").replace(".html",""), resultado.get("data").getAsJsonObject().get("cip").getAsString(), ""));
+//				}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, nroOperacion, "Error al generar el CIP de PagoEfectivo.");
+//			}else return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error al generar el Correlativo de PagoEfectivo.");
+//		}catch (Exception e) {
+//			// TODO: handle exception
+//			e.printStackTrace();
+//			return new MensajeConfirmacionResult(Constantes.RESULT_FALSE, "", "Error - pagoLinkPagoEfectivo.");
+//		}
+		
+		return null;
 	}
 	
 	private void registraVentasVrtVenpasNiubizPagoEfectivo(Long ventaId, VentasGeneral ventaGeneral, String c_numcontrol, VentaPasaje venta, boolean FlagVuelta, Long idMacthVenta,  String numOperacion, int FormaPago, 
-														   String hora_bloqueo_venta, String nroCip, Integer tipcom_val, BigDecimal idPasajero, String email_contacto, String telefono_opcional){
+														   String fechaFinal, String hora_bloqueo_venta, String nroCip, Integer tipcom_val, BigDecimal idPasajero, String email_contacto, String telefono_opcional){
 				
 		String insert = " INSERT INTO PASAJES.VRTVENPAS (venpas_id, venpas_idoriginal, itinerario_id, ruta_id, cliente_id, pasajero_id, "+	//1
 						" forpag_id, servicio_id, tipcom_id, tipmov_id, tipforpag_id, "+	//2
@@ -1148,7 +1678,7 @@ public class VentasDaoImpl implements VentasDao{
 						" , '', "+venta.getNroAsiento()+", "+venta.getNroPiso()+	//3
 						" , '"+c_numcontrol+"', "+venta.getIdAgenciaPartida()+", '"+venta.getFechaPartida()+"', '"+venta.getHoraPartida()+"', "+venta.getIdAgenciaLlegada()+", '"+venta.getFechaLlegada()+"', '"+venta.getHoraLlegada()+"', 0, "+venta.getTarifa()+	//4
 						" , 0, "+venta.getDescuento()+", 0, 0, "+venta.getImpPagado()+", 0, 0, 2, sysdate+180, null, '"+ventaGeneral.getFechaLiquidacion()+"'"+	//5
-						" , "+ventaGeneral.getIdAgencia()+", "+ventaGeneral.getIdUsuarioSispas()+", "+ventaGeneral.getCanalVenta()+", null, '"+numOperacion+"', trunc(sysdate), "+hora_bloqueo_venta+", 1, "+(venta.getPromocionIdSispas()!=0?venta.getPromocionIdSispas():null)+", "+(FlagVuelta?1:0)+	//6
+						" , "+ventaGeneral.getIdAgencia()+", "+ventaGeneral.getIdUsuarioSispas()+", "+ventaGeneral.getCanalVenta()+", null, '"+numOperacion+"', TO_DATE('"+fechaFinal+"','DD/MM/YYYY HH24:MI:SS'), '"+hora_bloqueo_venta+"', 1, "+(venta.getPromocionIdSispas()!=0?venta.getPromocionIdSispas():null)+", "+(FlagVuelta?1:0)+	//6
 						" , null, 0, '"+ventaGeneral.getObservaciones()+"', "+(FlagVuelta?idMacthVenta:null)+", '"+Constantes.ACTIVO+"', '"+ventaGeneral.getIpLocal()+"', '"+ventaGeneral.getIpLocal()+"', '', 1 "+	//7
 						" , 1, sysdate, "+venta.getImpPagado()+", '"+nroCip+"', 0, '"+email_contacto+"', '"+telefono_opcional+"', 0, "+idMacthVenta+", "+venta.getIdParentesco()+", "+venta.getTipoPasajero()+	//8
 						" )";
@@ -1718,7 +2248,24 @@ public class VentasDaoImpl implements VentasDao{
         }
         return result;
     }
-
+	
+	private static final class DatosIziPaySimularPagoRowMapper implements RowMapper<DatosIziPaySimularPago>{
+		@Override
+		public DatosIziPaySimularPago mapRow(ResultSet rs, int rowNum) throws SQLException {
+			return new DatosIziPaySimularPago(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6));
+		}
+	}
+	
+	private static final class VentaPasaje7RowMapper implements RowMapper<VentaPasaje> {
+		
+		@Override
+		public VentaPasaje mapRow(ResultSet rs, int rowNum) throws SQLException {
+				return new VentaPasaje(rs.getBigDecimal(1), rs.getBigDecimal(2), rs.getBigDecimal(3),
+									  new Pasajero(rs.getBigDecimal(4)), rs.getInt(5), rs.getInt(6), rs.getDouble(7));
+		
+			}
+	}
+	
 	private static final class PasajeroPr9RowMapper implements RowMapper<Pasajero> {
 		
 		@Override

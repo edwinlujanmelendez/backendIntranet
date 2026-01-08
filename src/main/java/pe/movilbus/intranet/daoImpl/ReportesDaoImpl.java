@@ -61,7 +61,7 @@ public class ReportesDaoImpl implements ReportesDao{
 		
 		try{
 			String sql = " with itinerarios_filtrados as ( "+
-						 "   select viti.itinerario_id, viti.c_sectra "+
+						 "   select viti.itinerario_id, viti.c_sectra, viti.servicio_id "+
 						 "   from vrtitinerario viti "+
 						 "   join vrmruta vrma on vrma.ruta_id = viti.ruta_idmayor "+
 						 "   where viti.d_fecpar between to_date('"+fechaInicio+"','yyyy-mm-dd') and to_date('"+fechaFin+"','yyyy-mm-dd') "+
@@ -72,6 +72,7 @@ public class ReportesDaoImpl implements ReportesDao{
 						 " ), "+
 						 " detalle as ( "+
 						 "   select diti.itinerario_id, "+
+						 "          CASE WHEN SUBSTR(vser.c_denominacion,0,5) = 'EJECU' THEN 'EJECUTIVO VIP' WHEN SUBSTR(vser.c_denominacion,0,5) = 'PRESI' THEN 'PRESIDENCIAL' WHEN SUBSTR(vser.c_denominacion,0,5) = 'PREMI' THEN 'PREMIER' WHEN SUBSTR(vser.c_denominacion,0,5) = 'ECONO' THEN 'ECONÓMICO' END AS servicio, "+
 						 "          vrut.c_origen, "+
 						 "          vrut.c_destino, "+
 						 "          diti.c_horpar, "+
@@ -83,6 +84,7 @@ public class ReportesDaoImpl implements ReportesDao{
 						 "   from vrtdetiti diti "+
 						 "   join vrmruta vrut on vrut.ruta_id = diti.ruta_id "+
 						 "   join itinerarios_filtrados ifil on ifil.itinerario_id = diti.itinerario_id "+
+						 "   join vrmservicio vser ON vser.servicio_id = ifil.servicio_id "+
 						 "   where instr(ifil.c_sectra, vrut.localidad_idorigen || '-' || vrut.localidad_iddestino) > 0 "+
 						 " ), "+
 						 " embarques as ( "+
@@ -101,7 +103,7 @@ public class ReportesDaoImpl implements ReportesDao{
 						 "   from vrtitiagelle vagelle "+
 						 "   join vrmagencia vage on vage.agencia_id = vagelle.agencia_id "+
 						 " ) "+
-						 " select t.itinerario_id, "+
+						 " select t.itinerario_id, t.servicio, "+
 						 "      coalesce(max(case when t.rn = 1 then t.c_origen end), '-') as origen, "+
 						 "      coalesce(max(case when t.rn = t.cnt then t.c_destino end), '-') as destino, "+
 						 
@@ -190,7 +192,7 @@ public class ReportesDaoImpl implements ReportesDao{
 						 " from detalle t "+
 						 " left join embarques e on e.itinerario_id = t.itinerario_id "+
 						 " left join desembarques d on d.itinerario_id = t.itinerario_id "+
-						 " group by t.itinerario_id "+
+						 " group by t.itinerario_id, t.servicio "+
 						 " order by coalesce(max(case when t.rn = 1 then t.c_horpar end), '-'), t.itinerario_id ";
 			
 			//System.out.println(sql);
@@ -1117,7 +1119,7 @@ public class ReportesDaoImpl implements ReportesDao{
 			return new ReporteSeguimientoFrotcom(rs.getBigDecimal(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9), 
 					rs.getString(10), rs.getString(11), rs.getString(12), rs.getString(13), rs.getString(14), rs.getString(15), rs.getString(16), rs.getString(17), rs.getString(18), rs.getString(19), rs.getString(20), 
 					rs.getString(21), rs.getString(22), rs.getString(23), rs.getString(24), rs.getString(25), rs.getString(26), rs.getString(27), rs.getString(28), rs.getString(29), rs.getString(30), rs.getString(31), 
-					rs.getString(32), rs.getString(33), rs.getString(34), rs.getString(35), rs.getString(36), rs.getString(37), rs.getString(38), rs.getString(39));
+					rs.getString(32), rs.getString(33), rs.getString(34), rs.getString(35), rs.getString(36), rs.getString(37), rs.getString(38), rs.getString(39), rs.getString(40));
 		}
 	}
 	
