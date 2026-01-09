@@ -6,11 +6,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import pe.movilbus.intranet.beans.Bus;
+import pe.movilbus.intranet.beans.FormularioReten;
 import pe.movilbus.intranet.beans.Personal;
+import pe.movilbus.intranet.result.MensajeResult;
 import pe.movilbus.intranet.service.ConductoresService;
 
 @RestController
@@ -25,9 +29,19 @@ public class ConductoresRestController {
 		return conductoresService.getPilotos();
 	}
 	
+	@GetMapping("/getReporteFormularioReten/{fecha_inicio}/{fecha_fin}")
+	public List<FormularioReten> getReporteFormularioReten(@PathVariable String fecha_inicio, @PathVariable String fecha_fin){
+		return conductoresService.getReporteFormularioReten(fecha_inicio, fecha_fin);
+	}
+	
 	@GetMapping("/getDatosBus/{unidad}")
 	public ResponseEntity<Bus> getDatosBus(@PathVariable String unidad){
 		Bus bus = conductoresService.getDatosBus(unidad);
 	    return ResponseEntity.ok(bus);
+	}
+	
+	@PostMapping("/insertFormularioReten")
+	public MensajeResult insertFormularioReten(@RequestBody FormularioReten data){
+		return conductoresService.insertFormularioReten(data);
 	}
 }

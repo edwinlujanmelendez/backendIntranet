@@ -212,55 +212,55 @@ public class Constantes implements Serializable {
 	public static final DateFormat FORMAT_LONG = new SimpleDateFormat ("dd/MM/yyyy HH:mm");
 	public static final DateFormat FORMAT_DATE_TIME_24H = new SimpleDateFormat ("dd/MM/yyyy HH:mm:ss");
 	
-//	// IZIPAY - DESARROLLO
-//	public static final String MERCHANT_ID_IZIPAY = "4004353";
-//	public static final String PUBLIC_KEY_IZIPAY = "VErethUtraQuxas57wuMuquprADrAHAb";
-//	public static final String HASH_KEY_IZIPAY = "Xom5Hlt9eSWoylYuBrenIbOsTljEdefR";
-//	public static final String URL_TOKEN_IZIPAY = "https://sandbox-api-pw.izipay.pe/security/v1/Token/Generate";
-//	public static final String URL_CREACION_LINK_IZIPAY = "https://sandbox-api-pw.izipay.pe/paymentlink/api/v1/process/generate";
-//	public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendIntranetQA/Ventas/actualizarVentasPagoLinkIziPay";
+	// IZIPAY - DESARROLLO
+	public static final String MERCHANT_ID_IZIPAY = "4004353";
+	public static final String PUBLIC_KEY_IZIPAY = "VErethUtraQuxas57wuMuquprADrAHAb";
+	public static final String HASH_KEY_IZIPAY = "Xom5Hlt9eSWoylYuBrenIbOsTljEdefR";
+	public static final String URL_TOKEN_IZIPAY = "https://sandbox-api-pw.izipay.pe/security/v1/Token/Generate";
+	public static final String URL_CREACION_LINK_IZIPAY = "https://sandbox-api-pw.izipay.pe/paymentlink/api/v1/process/generate";
+	public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendIntranetQA/Ventas/actualizarVentasPagoLinkIziPay";
+	
+	// security : https://apitestenv.vnforapps.com/api.security/v2/security/keys
+	// PAGO LINK - DESARROLLO
+	public static final int CODIGO_COMERCIO = 341198214;
+	public static final String userpassBase64 = "aW50ZWdyYWNpb25lcy52aXNhbmV0QG5lY29tcGx1cy5jb206ZDVlN25rJE0=";						//BASE64 - integraciones.visanet@necomplus.com:d5e7nk$M
+	public static final String url_token = "https://apitestenv.vnforapps.com/api.security/v1/security";
+	public static final String url_crear_orden = "https://apitestenv.vnforapps.com/api.ordermgmt/api/v1/order/create/"+CODIGO_COMERCIO;
+	public static final String url_consultar_orden = "https://apitestenv.vnforapps.com/api.ordermgmt/api/v1/order/query/"+CODIGO_COMERCIO+"/";
+	
+	// PAGOEFECTIVO - DESARROLLO
+	public static final String URL_BASE_PAGOEFECTIVO = "https://pre1a.services.pagoefectivo.pe/";
+	public static final String URL_BASE_RESPUESTAPEF = "https://pre1a.payment.pagoefectivo.pe/";
+	public static final String IDSERVICIO_PAGOEFECTIVO = "1983";
+	public static final String ACCESSKEY_PAGOEFECTIVO = "NDY1ZDc1YjQ5MjQ4NDE5";
+	public static final String SECRETKEY_PAGOEFECTIVO = "AWkC3mGers7l6JAPmCqwGnKsQCsleWbwuXIpjE7P";
+	public static final String EMAIL_RESPUESTA_ADMIN = "edwin.lujan@movilbus.pe";
+	public static final String URL_RESPUESTA_PAGOEFECTIVO = "https://qapasajesdebus.movilbus.pe/confirmacion-pago?";
+	
+//	// IZIPAY - PRODUCCIÓN
+//	public static final String MERCHANT_ID_IZIPAY = "4080631";
+//	public static final String PUBLIC_KEY_IZIPAY = "1PgWbh2Ep2l3TSvtEGPB2EsHSPv5Qdgo";
+//	public static final String HASH_KEY_IZIPAY = "v96XZVnF4VPEWNwq8FqEXfeMrK0nHZ2M";
+//	public static final String URL_TOKEN_IZIPAY = "https://api-pw.izipay.pe/security/v1/Token/Generate";
+//	public static final String URL_CREACION_LINK_IZIPAY = "https://api-pw.izipay.pe/paymentlink/api/v1/process/generate";
+//	//public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendIntranet/Ventas/actualizarVentasPagoLinkIziPay";
+//	public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendEcommerce/Ventas/updateIziPay";
 //	
-//	// security : https://apitestenv.vnforapps.com/api.security/v2/security/keys
-//	// PAGO LINK - DESARROLLO
-//	public static final int CODIGO_COMERCIO = 341198214;
-//	public static final String userpassBase64 = "aW50ZWdyYWNpb25lcy52aXNhbmV0QG5lY29tcGx1cy5jb206ZDVlN25rJE0=";						//BASE64 - integraciones.visanet@necomplus.com:d5e7nk$M
-//	public static final String url_token = "https://apitestenv.vnforapps.com/api.security/v1/security";
-//	public static final String url_crear_orden = "https://apitestenv.vnforapps.com/api.ordermgmt/api/v1/order/create/"+CODIGO_COMERCIO;
-//	public static final String url_consultar_orden = "https://apitestenv.vnforapps.com/api.ordermgmt/api/v1/order/query/"+CODIGO_COMERCIO+"/";
+//	// PAGO LINK - PRODUCCION
+//	public static final int CODIGO_COMERCIO = 651023411;
+//	public static final String userpassBase64 = "bGljZW5jaWFzQG1vdmlsYnVzLnBlOnpWJHZ2MjZ3";						//BASE64 - licencias@movilbus.pe:zV$vv26w
+//	public static final String url_token = "https://apiprod.vnforapps.com/api.security/v1/security";
+//	public static final String url_crear_orden = "https://apiprod.vnforapps.com/api.ordermgmt/api/v1/order/create/"+CODIGO_COMERCIO;
+//	public static final String url_consultar_orden = "https://apiprod.vnforapps.com/api.ordermgmt/api/v1/order/query/"+CODIGO_COMERCIO+"/";
 //	
-//	// PAGOEFECTIVO - DESARROLLO
-//	public static final String URL_BASE_PAGOEFECTIVO = "https://pre1a.services.pagoefectivo.pe/";
-//	public static final String URL_BASE_RESPUESTAPEF = "https://pre1a.payment.pagoefectivo.pe/";
-//	public static final String IDSERVICIO_PAGOEFECTIVO = "1983";
-//	public static final String ACCESSKEY_PAGOEFECTIVO = "NDY1ZDc1YjQ5MjQ4NDE5";
-//	public static final String SECRETKEY_PAGOEFECTIVO = "AWkC3mGers7l6JAPmCqwGnKsQCsleWbwuXIpjE7P";
-//	public static final String EMAIL_RESPUESTA_ADMIN = "edwin.lujan@movilbus.pe";
-//	public static final String URL_RESPUESTA_PAGOEFECTIVO = "https://qapasajesdebus.movilbus.pe/confirmacion-pago?";
-	
-	// IZIPAY - PRODUCCIÓN
-	public static final String MERCHANT_ID_IZIPAY = "4080631";
-	public static final String PUBLIC_KEY_IZIPAY = "1PgWbh2Ep2l3TSvtEGPB2EsHSPv5Qdgo";
-	public static final String HASH_KEY_IZIPAY = "v96XZVnF4VPEWNwq8FqEXfeMrK0nHZ2M";
-	public static final String URL_TOKEN_IZIPAY = "https://api-pw.izipay.pe/security/v1/Token/Generate";
-	public static final String URL_CREACION_LINK_IZIPAY = "https://api-pw.izipay.pe/paymentlink/api/v1/process/generate";
-	//public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendIntranet/Ventas/actualizarVentasPagoLinkIziPay";
-	public static final String URL_WEBHOOK_IZIPAY = "https://www.movilbus.pe/backendEcommerce/Ventas/updateIziPay";
-	
-	// PAGO LINK - PRODUCCION
-	public static final int CODIGO_COMERCIO = 651023411;
-	public static final String userpassBase64 = "bGljZW5jaWFzQG1vdmlsYnVzLnBlOnpWJHZ2MjZ3";						//BASE64 - licencias@movilbus.pe:zV$vv26w
-	public static final String url_token = "https://apiprod.vnforapps.com/api.security/v1/security";
-	public static final String url_crear_orden = "https://apiprod.vnforapps.com/api.ordermgmt/api/v1/order/create/"+CODIGO_COMERCIO;
-	public static final String url_consultar_orden = "https://apiprod.vnforapps.com/api.ordermgmt/api/v1/order/query/"+CODIGO_COMERCIO+"/";
-	
-	// PAGOEFECTIVO - PRODUCCION
-	public static final String URL_BASE_PAGOEFECTIVO = "https://services.pagoefectivo.pe/";
-	public static final String URL_BASE_RESPUESTAPEF = "https://payment.pagoefectivo.pe/";
-	public static final String ACCESSKEY_PAGOEFECTIVO = "M2U5MmVmZDdlZGU5MTM1";
-	public static final String IDSERVICIO_PAGOEFECTIVO = "20188";
-	public static final String SECRETKEY_PAGOEFECTIVO = "xDDoL3GNbMhKnfSEs3pGFde3FTJKnERu/Xoq3duC";
-	public static final String EMAIL_RESPUESTA_ADMIN = "soporteti@movilgroup.pe";
-	public static final String URL_RESPUESTA_PAGOEFECTIVO = "https://pasajesdebus.movilbus.pe/confirmacion-pago?";
+//	// PAGOEFECTIVO - PRODUCCION
+//	public static final String URL_BASE_PAGOEFECTIVO = "https://services.pagoefectivo.pe/";
+//	public static final String URL_BASE_RESPUESTAPEF = "https://payment.pagoefectivo.pe/";
+//	public static final String ACCESSKEY_PAGOEFECTIVO = "M2U5MmVmZDdlZGU5MTM1";
+//	public static final String IDSERVICIO_PAGOEFECTIVO = "20188";
+//	public static final String SECRETKEY_PAGOEFECTIVO = "xDDoL3GNbMhKnfSEs3pGFde3FTJKnERu/Xoq3duC";
+//	public static final String EMAIL_RESPUESTA_ADMIN = "soporteti@movilgroup.pe";
+//	public static final String URL_RESPUESTA_PAGOEFECTIVO = "https://pasajesdebus.movilbus.pe/confirmacion-pago?";
 	
 	// CONFIGURACION CON OFFICE 365 - PRODUCCION
     public static final String mail_stmp_host = "smtp.office365.com";

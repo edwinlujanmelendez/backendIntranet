@@ -12,8 +12,11 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import pe.movilbus.intranet.beans.Bus;
+import pe.movilbus.intranet.beans.FormularioReten;
 import pe.movilbus.intranet.beans.Personal;
 import pe.movilbus.intranet.dao.ConductoresDao;
+import pe.movilbus.intranet.result.MensajeResult;
+import pe.movilbus.intranet.util.Constantes;
 
 @Repository
 public class ConductoresDaoImpl implements ConductoresDao{
@@ -32,10 +35,22 @@ public class ConductoresDaoImpl implements ConductoresDao{
 			
 			return lstPilotos;
 		}catch(Exception e){
-			e.printStackTrace();
+			//e.printStackTrace();
+			return null;
 		}
-		
-		return null;
+	}
+	
+	@Override
+	public List<FormularioReten> getReporteFormularioReten(String fecha_inicio, String fecha_fin){		
+		try{
+			String sql = " select vreten.fecha_partida, vreten.id_conductor, vper.c_apepat || ' ' || vper.c_apemat || ', ' || vper.c_nombre as nombreConductor, vreten.tipo_conductor, vreten.unidad, vreten.placa, vreten.servicio, vreten.tipo, vreten.observaciones  from VRTFORMULARIORETEN vreten "+
+						 " inner join vrmpersonal vper on vper.personal_id = vreten.id_conductor WHERE vreten.fecha_partida BETWEEN TO_DATE(?, 'YYYY-MM-DD') AND TO_DATE(?, 'YYYY-MM-DD')";
+
+		    return jdbcTemplate.query(sql, new Object[]{fecha_inicio, fecha_fin}, new FormularioRetenRowMapper());
+		}catch(Exception e){
+			//e.printStackTrace();
+			return null;
+		}
 	}
 	
 	@Override
@@ -47,6 +62,29 @@ public class ConductoresDaoImpl implements ConductoresDao{
 		}catch(EmptyResultDataAccessException e){
 			//e.printStackTrace();
 			return null;
+		}
+	}
+	
+	@Override
+	public MensajeResult insertFormularioReten(FormularioReten data){
+		try{
+			String sql_insert = " INSERT INTO pasajes.VRTFORMULARIORETEN (FECHA_PARTIDA, ID_CONDUCTOR, TIPO_CONDUCTOR, UNIDAD, PLACA, SERVICIO, TIPO, OBSERVACIONES) "+
+						 " VALUES ('"+data.getFecha_partida()+"', '"+data.getIdConductor()+"', '"+data.getTipo_conductor()+"', '"+data.getUnidad()+"', '"+data.getPlaca()+"', '"+data.getServicio()+"', '"+data.getTipo()+"', '"+data.getObservaciones()+"')";
+			
+			jdbcTemplate.update(sql_insert);
+			
+			return new MensajeResult(Constantes.RESULT_TRUE, "");
+		}catch(Exception e){
+			e.printStackTrace();
+			return new MensajeResult(Constantes.RESULT_FALSE, "");
+		}
+	}
+	
+	private final class FormularioRetenRowMapper implements RowMapper<FormularioReten>{
+		
+		@Override
+		public FormularioReten mapRow(ResultSet rs, int rowNum) throws SQLException {
+			return new FormularioReten(rs.getString(1), rs.getInt(2), rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9));
 		}
 	}
 	
