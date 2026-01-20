@@ -10,7 +10,7 @@ import pe.movilbus.intranet.beans.UsuariosCounter;
 
 public interface ReportesDao {
 	
-	public List<Agencia> getAgencias();
+	public List<Agencia> getAgencias(int idAgencia);
 	
 	public List<UsuariosCounter> getUsuariosCounter(int agencia_id, String fechaInicio, String fechaFin);
 	

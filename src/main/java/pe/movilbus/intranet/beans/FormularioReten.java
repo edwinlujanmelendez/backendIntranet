@@ -3,8 +3,10 @@ package pe.movilbus.intranet.beans;
 public class FormularioReten {
 	
 	public String fecha_partida;
-	public int idConductor;
+	public int id_conductor;
 	public String nombre_conductor;
+	public int agencia_id;
+	public String nombre_agencia;
 	public String tipo_conductor;
 	public String unidad;
 	public String placa;
@@ -15,12 +17,15 @@ public class FormularioReten {
 	public FormularioReten(){
 		super();
 	}
-	
-	public FormularioReten(String fecha_partida, int idConductor, String nombre_conductor, String tipo_conductor, String unidad, String placa,
-			String servicio, String tipo, String observaciones) {
+
+	public FormularioReten(String fecha_partida, int id_conductor, String nombre_conductor, int agencia_id,
+			String nombre_agencia, String tipo_conductor, String unidad, String placa, String servicio, String tipo,
+			String observaciones) {
 		this.fecha_partida = fecha_partida;
-		this.idConductor = idConductor;
+		this.id_conductor = id_conductor;
 		this.nombre_conductor = nombre_conductor;
+		this.agencia_id = agencia_id;
+		this.nombre_agencia = nombre_agencia;
 		this.tipo_conductor = tipo_conductor;
 		this.unidad = unidad;
 		this.placa = placa;
@@ -37,12 +42,12 @@ public class FormularioReten {
 		this.fecha_partida = fecha_partida;
 	}
 
-	public int getIdConductor() {
-		return idConductor;
+	public int getId_conductor() {
+		return id_conductor;
 	}
 
-	public void setIdConductor(int idConductor) {
-		this.idConductor = idConductor;
+	public void setId_conductor(int id_conductor) {
+		this.id_conductor = id_conductor;
 	}
 
 	public String getNombre_conductor() {
@@ -51,6 +56,22 @@ public class FormularioReten {
 
 	public void setNombre_conductor(String nombre_conductor) {
 		this.nombre_conductor = nombre_conductor;
+	}
+
+	public int getAgencia_id() {
+		return agencia_id;
+	}
+
+	public void setAgencia_id(int agencia_id) {
+		this.agencia_id = agencia_id;
+	}
+
+	public String getNombre_agencia() {
+		return nombre_agencia;
+	}
+
+	public void setNombre_agencia(String nombre_agencia) {
+		this.nombre_agencia = nombre_agencia;
 	}
 
 	public String getTipo_conductor() {

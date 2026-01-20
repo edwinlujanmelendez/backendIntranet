@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import pe.movilbus.intranet.beans.Bus;
 import pe.movilbus.intranet.beans.FormularioReten;
+import pe.movilbus.intranet.beans.MantenimientoRuta;
 import pe.movilbus.intranet.beans.Personal;
+import pe.movilbus.intranet.beans.ReporteTareoConductor;
 import pe.movilbus.intranet.result.MensajeResult;
 import pe.movilbus.intranet.service.ConductoresService;
 
@@ -43,5 +45,15 @@ public class ConductoresRestController {
 	@PostMapping("/insertFormularioReten")
 	public MensajeResult insertFormularioReten(@RequestBody FormularioReten data){
 		return conductoresService.insertFormularioReten(data);
+	}
+	
+	@GetMapping("/getReporteMantenimientoRuta/{localidadOrigen}/{localidadDestino}")
+	public List<MantenimientoRuta> getReporteMantenimientoRuta(@PathVariable int localidadOrigen, @PathVariable int localidadDestino){
+		return conductoresService.getReporteMantenimientoRuta(localidadOrigen, localidadDestino);
+	}
+	
+	@GetMapping("/getReporteTareoConductor/{fecha_inicio}/{fecha_fin}/{conductor_id}")
+	public List<ReporteTareoConductor> getReporteTareoConductor(@PathVariable String fecha_inicio, @PathVariable String fecha_fin, @PathVariable int conductor_id){
+		return conductoresService.getReporteTareoConductor(fecha_inicio, fecha_fin, conductor_id);
 	}
 }

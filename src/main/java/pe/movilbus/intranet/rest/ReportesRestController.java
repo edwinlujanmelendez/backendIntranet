@@ -24,9 +24,9 @@ public class ReportesRestController {
 	@Autowired
 	private ReportesService reportesService;
 	
-	@GetMapping("/getAgencias")
-	public List<Agencia> getAgencias(){
-		return reportesService.getAgencias();
+	@GetMapping("/getAgencias/{idAgencia}")
+	public List<Agencia> getAgencias(@PathVariable int idAgencia){
+		return reportesService.getAgencias(idAgencia);
 	}
 	
 	@GetMapping("/getUsuariosCounter/{agencia_id}/{fechaInicio}/{fechaFin}")

@@ -20,8 +20,8 @@ public class ReportesServiceImpl implements ReportesService{
 	private ReportesDao reportesDao;
 	
 	@Override
-	public List<Agencia> getAgencias(){
-		return reportesDao.getAgencias();
+	public List<Agencia> getAgencias(int idAgencia){
+		return reportesDao.getAgencias(idAgencia);
 	}
 	
 	@Override

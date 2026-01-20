@@ -24,16 +24,19 @@ public class ReportesDaoImpl implements ReportesDao{
 	private JdbcTemplate jdbcTemplate;
 	
 	@Override
-	public List<Agencia> getAgencias(){
+	public List<Agencia> getAgencias(int idAgencia){
 		List<Agencia> lstReportes = new ArrayList<Agencia>();
 		
+		String query_idagencia = "";
+		
+		if(idAgencia != 0){
+			query_idagencia = " and agencia_id = "+idAgencia;
+		}
+		//345
 		try{
 			String sql = " select agencia_id, tipage_id, localidad_id, concesionario_id, ubigeo_id, zoncom_id, c_denominacion, c_nomcor, n_esterminal, c_codigo, "+
-						 " c_direccion, nacionalidad_id, codigo_concar, c_nombre_concar from vrmagencia where c_estreg='A' and concesionario_id=1 and agencia_id=345 order by c_denominacion";
-			
-			/*String sql = " select agencia_id, tipage_id, localidad_id, concesionario_id, ubigeo_id, zoncom_id, c_denominacion, c_nomcor, n_esterminal, c_codigo, "+
-					 	 " c_direccion, nacionalidad_id, codigo_concar, c_nombre_concar from vrmagencia where c_estreg='A' and concesionario_id=1 order by c_denominacion";*/
-			
+						 " c_direccion, nacionalidad_id, codigo_concar, c_nombre_concar from vrmagencia where c_estreg='A' and concesionario_id=1 "+query_idagencia+" order by c_denominacion";
+						
 			lstReportes = jdbcTemplate.query(sql, new AgenciaRowMapper());
 			
 			return lstReportes;

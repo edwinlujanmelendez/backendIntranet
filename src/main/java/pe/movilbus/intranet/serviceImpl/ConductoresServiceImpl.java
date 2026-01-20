@@ -7,7 +7,9 @@ import org.springframework.stereotype.Service;
 
 import pe.movilbus.intranet.beans.Bus;
 import pe.movilbus.intranet.beans.FormularioReten;
+import pe.movilbus.intranet.beans.MantenimientoRuta;
 import pe.movilbus.intranet.beans.Personal;
+import pe.movilbus.intranet.beans.ReporteTareoConductor;
 import pe.movilbus.intranet.dao.ConductoresDao;
 import pe.movilbus.intranet.result.MensajeResult;
 import pe.movilbus.intranet.service.ConductoresService;
@@ -36,5 +38,15 @@ public class ConductoresServiceImpl implements ConductoresService{
 	@Override
 	public MensajeResult insertFormularioReten(FormularioReten data){
 		return conductoresDao.insertFormularioReten(data);
+	}
+	
+	@Override
+	public List<MantenimientoRuta> getReporteMantenimientoRuta(int localidadOrigen, int localidadDestino){
+		return conductoresDao.getReporteMantenimientoRuta(localidadOrigen, localidadDestino);
+	}
+	
+	@Override
+	public List<ReporteTareoConductor> getReporteTareoConductor(String fecha_inicio, String fecha_fin, int conductor_id){
+		return conductoresDao.getReporteTareoConductor(fecha_inicio, fecha_fin, conductor_id);
 	}
 }

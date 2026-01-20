@@ -3,6 +3,7 @@ package pe.movilbus.intranet.beans;
 import java.math.BigDecimal;
 
 public class ReporteSeguimientoFrotcom {
+	
 	private static final long serialVersionUID = 1L;
 	private BigDecimal itinerario_id;
 	private String servicio;
