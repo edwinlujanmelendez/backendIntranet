@@ -17,6 +17,7 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
@@ -127,6 +128,8 @@ public class VentasDaoImpl implements VentasDao{
 	
 	private static String url_api = "";
 	private static String userpassBase64 = "";
+	
+	String[] codigosBoletos = {"FB", "BB", "BV", "BT", "BE", "BM", "BA"};
 	
 	@Override
 	public MensajeConfirmacionResult simularPago(String numOperacion){
@@ -697,7 +700,7 @@ public class VentasDaoImpl implements VentasDao{
 						 " where "+add_consulta+
 						 " and vp.audfecins >= trunc(sysdate-"+cont+") order by vp.venpas_id asc";
 			
-			System.out.println(sql);
+			//System.out.println(sql);
 			
 			return jdbcTemplate.query(sql, new VentasGeneralPasajerosRowMapper());
 		}catch(Exception e){
@@ -715,10 +718,10 @@ public class VentasDaoImpl implements VentasDao{
 			List<VentasGeneralPasajeros> lista = new ArrayList<>();
 			int cont = 3650;		// 10 años
 
-			if (txt_input.contains("BB") || txt_input.contains("FB") || txt_input.contains("-")) {				/********************** POR BOLETO o FACTURA **********************/
+			if (Arrays.stream(codigosBoletos).anyMatch(txt_input::contains) || txt_input.contains("-")) {				/********************** POR BOLETO o FACTURA **********************/
 			    String sql;
 			    
-			    if(txt_input.contains("BB") || txt_input.contains("FB")){
+			    if(Arrays.stream(codigosBoletos).anyMatch(txt_input::contains)){
 			    	idOriginal = new ArrayList<>();
 			    	
 			        sql = "SELECT venpas_idoriginal FROM vrtvenpas WHERE C_NUMBOLETO = ? AND audfecins >= TRUNC(SYSDATE - ?)";

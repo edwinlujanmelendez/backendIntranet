@@ -2,6 +2,7 @@ package pe.movilbus.intranet.beans;
 
 public class FormularioReten {
 	
+	public int formularioreten_id;
 	public String fecha_partida;
 	public int id_conductor;
 	public String nombre_conductor;
@@ -18,9 +19,10 @@ public class FormularioReten {
 		super();
 	}
 
-	public FormularioReten(String fecha_partida, int id_conductor, String nombre_conductor, int agencia_id,
-			String nombre_agencia, String tipo_conductor, String unidad, String placa, String servicio, String tipo,
-			String observaciones) {
+	public FormularioReten(int formularioreten_id, String fecha_partida, int id_conductor, String nombre_conductor, 
+			int agencia_id, String nombre_agencia, String tipo_conductor, String unidad, String placa, String servicio, 
+			String tipo, String observaciones) {
+		this.formularioreten_id = formularioreten_id;
 		this.fecha_partida = fecha_partida;
 		this.id_conductor = id_conductor;
 		this.nombre_conductor = nombre_conductor;
@@ -32,6 +34,14 @@ public class FormularioReten {
 		this.servicio = servicio;
 		this.tipo = tipo;
 		this.observaciones = observaciones;
+	}
+	
+	public int getFormularioreten_id() {
+		return formularioreten_id;
+	}
+
+	public void setFormularioreten_id(int formularioreten_id) {
+		this.formularioreten_id = formularioreten_id;
 	}
 
 	public String getFecha_partida() {

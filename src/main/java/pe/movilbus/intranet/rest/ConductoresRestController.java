@@ -42,9 +42,9 @@ public class ConductoresRestController {
 	    return ResponseEntity.ok(bus);
 	}
 	
-	@PostMapping("/insertFormularioReten")
-	public MensajeResult insertFormularioReten(@RequestBody FormularioReten data){
-		return conductoresService.insertFormularioReten(data);
+	@PostMapping("/insertUpdateFormularioReten")
+	public MensajeResult insertUpdateFormularioReten(@RequestBody FormularioReten data){
+		return conductoresService.insertUpdateFormularioReten(data);
 	}
 	
 	@GetMapping("/getReporteMantenimientoRuta/{localidadOrigen}/{localidadDestino}")
@@ -55,5 +55,15 @@ public class ConductoresRestController {
 	@GetMapping("/getReporteTareoConductor/{fecha_inicio}/{fecha_fin}/{conductor_id}")
 	public List<ReporteTareoConductor> getReporteTareoConductor(@PathVariable String fecha_inicio, @PathVariable String fecha_fin, @PathVariable int conductor_id){
 		return conductoresService.getReporteTareoConductor(fecha_inicio, fecha_fin, conductor_id);
+	}
+	
+	@PostMapping("/insertDatosMantenimientoRuta")
+	public MensajeResult insertDatosMantenimientoRuta(@RequestBody List<MantenimientoRuta> data){
+		return conductoresService.insertDatosMantenimientoRuta(data);
+	}
+	
+	@GetMapping("/eliminarRegistroFormularioReten/{id}")
+	public MensajeResult eliminarRegistroFormularioReten(@PathVariable int id){
+		return conductoresService.eliminarRegistroFormularioReten(id);
 	}
 }

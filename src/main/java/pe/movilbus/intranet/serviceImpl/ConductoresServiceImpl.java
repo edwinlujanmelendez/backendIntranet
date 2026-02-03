@@ -36,8 +36,8 @@ public class ConductoresServiceImpl implements ConductoresService{
 	}
 	
 	@Override
-	public MensajeResult insertFormularioReten(FormularioReten data){
-		return conductoresDao.insertFormularioReten(data);
+	public MensajeResult insertUpdateFormularioReten(FormularioReten data){
+		return conductoresDao.insertUpdateFormularioReten(data);
 	}
 	
 	@Override
@@ -48,5 +48,15 @@ public class ConductoresServiceImpl implements ConductoresService{
 	@Override
 	public List<ReporteTareoConductor> getReporteTareoConductor(String fecha_inicio, String fecha_fin, int conductor_id){
 		return conductoresDao.getReporteTareoConductor(fecha_inicio, fecha_fin, conductor_id);
+	}
+	
+	@Override
+	public MensajeResult insertDatosMantenimientoRuta(List<MantenimientoRuta> data){
+		return conductoresDao.insertDatosMantenimientoRuta(data);
+	}
+	
+	@Override
+	public MensajeResult eliminarRegistroFormularioReten(int id){
+		return conductoresDao.eliminarRegistroFormularioReten(id);
 	}
 }

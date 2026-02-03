@@ -17,9 +17,13 @@ public interface ConductoresService {
 	
 	public Bus getDatosBus(String unidad);
 	
-	public MensajeResult insertFormularioReten(FormularioReten data);
+	public MensajeResult insertUpdateFormularioReten(FormularioReten data);
 	
 	public List<MantenimientoRuta> getReporteMantenimientoRuta(int localidadOrigen, int localidadDestino);
 	
 	public List<ReporteTareoConductor> getReporteTareoConductor(String fecha_inicio, String fecha_fin, int conductor_id);
+	
+	public MensajeResult insertDatosMantenimientoRuta(List<MantenimientoRuta> data);
+	
+	public MensajeResult eliminarRegistroFormularioReten(int id);
 }

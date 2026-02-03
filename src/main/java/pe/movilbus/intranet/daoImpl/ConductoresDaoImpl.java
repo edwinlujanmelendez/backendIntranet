@@ -1,5 +1,6 @@
 package pe.movilbus.intranet.daoImpl;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -49,7 +50,7 @@ public class ConductoresDaoImpl implements ConductoresDao{
 	@Override
 	public List<FormularioReten> getReporteFormularioReten(String fecha_inicio, String fecha_fin){		
 		try{
-			String sql = " select vreten.fecha_partida, vreten.id_conductor, vper.c_apepat || ' ' || vper.c_apemat || ', ' || vper.c_nombre as nombreConductor, vreten.agencia_id, vage.c_denominacion, vreten.tipo_conductor, vreten.unidad, vreten.placa, vreten.servicio, vreten.tipo, vreten.observaciones "+ 
+			String sql = " select vreten.formularioreten_id, vreten.fecha_partida, vreten.id_conductor, vper.c_apepat || ' ' || vper.c_apemat || ', ' || vper.c_nombre as nombreConductor, vreten.agencia_id, vage.c_denominacion, vreten.tipo_conductor, vreten.unidad, vreten.placa, vreten.servicio, vreten.tipo, vreten.observaciones "+ 
 						 " from VRTFORMULARIORETEN vreten "+
 						 " inner join vrmpersonal vper on vper.personal_id = vreten.id_conductor "+
 						 " inner join vrmagencia vage on vage.agencia_id = vreten.agencia_id WHERE vreten.fecha_partida BETWEEN TO_DATE(?, 'YYYY-MM-DD') AND TO_DATE(?, 'YYYY-MM-DD')";
@@ -74,12 +75,22 @@ public class ConductoresDaoImpl implements ConductoresDao{
 	}
 	
 	@Override
-	public MensajeResult insertFormularioReten(FormularioReten data){
+	public MensajeResult insertUpdateFormularioReten(FormularioReten data){
 		try{
-			String sql_insert = " INSERT INTO pasajes.VRTFORMULARIORETEN (FECHA_PARTIDA, ID_CONDUCTOR, AGENCIA_ID, TIPO_CONDUCTOR, UNIDAD, PLACA, SERVICIO, TIPO, OBSERVACIONES) "+
-						 " VALUES ('"+data.getFecha_partida()+"', '"+data.getId_conductor()+"', '"+data.getAgencia_id()+"', '"+data.getTipo_conductor()+"', '"+data.getUnidad()+"', '"+data.getPlaca()+"', '"+data.getServicio()+"', '"+data.getTipo()+"', '"+data.getObservaciones()+"')";
+			if(data.getFormularioreten_id() == 0){
+				String sqlSecuencial = " select pasajes.SEQ_VRTFORMULARIORETEN_ID.NEXTVAL from dual";
+				BigDecimal idpasajero = jdbcTemplate.queryForObject(sqlSecuencial, BigDecimal.class);
+				
+				String sql_insert = " INSERT INTO pasajes.VRTFORMULARIORETEN (FORMULARIORETEN_ID, FECHA_PARTIDA, ID_CONDUCTOR, AGENCIA_ID, TIPO_CONDUCTOR, UNIDAD, PLACA, SERVICIO, TIPO, OBSERVACIONES) "+
+						 " VALUES ("+idpasajero+", '"+data.getFecha_partida()+"', '"+data.getId_conductor()+"', '"+data.getAgencia_id()+"', '"+data.getTipo_conductor()+"', '"+data.getUnidad()+"', '"+data.getPlaca()+"', '"+data.getServicio()+"', '"+data.getTipo()+"', '"+data.getObservaciones()+"')";
 			
-			jdbcTemplate.update(sql_insert);
+				jdbcTemplate.update(sql_insert);
+			}else{
+				String sql_insert = " UPDATE pasajes.VRTFORMULARIORETEN SET FECHA_PARTIDA='"+data.getFecha_partida()+"', ID_CONDUCTOR='"+data.getId_conductor()+"', AGENCIA_ID='"+data.getAgencia_id()+"', TIPO_CONDUCTOR='"+data.getTipo_conductor()+"'"+
+									" , UNIDAD='"+data.getUnidad()+"', PLACA='"+data.getPlaca()+"', SERVICIO='"+data.getServicio()+"', TIPO='"+data.getTipo()+"', OBSERVACIONES='"+data.getObservaciones()+"' WHERE FORMULARIORETEN_ID="+data.getFormularioreten_id();
+				
+				jdbcTemplate.update(sql_insert);
+			}
 			
 			return new MensajeResult(Constantes.RESULT_TRUE, "");
 		}catch(Exception e){
@@ -457,6 +468,7 @@ public class ConductoresDaoImpl implements ConductoresDao{
 						" NVL(vs.PILOTO, '') as CONDUCTOR, "+
 						" vs.AUXPILOTO, vs.ADICIONAL_FIJO, vs.CAPACIDAD_BUS, vs.T_BOLETO, vs.T_MONTO " +
 						" FROM tmpventasxservicios vs " +
+						query_conductor_id_temporal_piloto +
 						" where vs.FECHA_PARTIDA between to_date('"+fechaInicioBarra+"','dd/mm/yyyy') and to_date('"+fechaFinBarra+"','dd/mm/yyyy') " +
 						" UNION ALL " +
 						" select vs.EMPRESA, vs.FECHA_PARTIDA, vs.TURNO, vs.ORIGEN, vs.DESTINO, vs.SERVICIO, vs.NRO_BUS, vs.PLACA_BUS, vs.TERRAMOZA, vs.NRO_PROGRAMACION, " +
@@ -464,7 +476,7 @@ public class ConductoresDaoImpl implements ConductoresDao{
 						" NVL('', vs.COPILOTO) as CONDUCTOR, "+
 						" vs.AUXPILOTO, vs.ADICIONAL_FIJO, vs.CAPACIDAD_BUS, vs.T_BOLETO, vs.T_MONTO " +
 						" FROM tmpventasxservicios vs " +
-						query_conductor_id_temporal_piloto+
+						query_conductor_id_temporal_copiloto+
 						" where vs.FECHA_PARTIDA between to_date('"+fechaInicioBarra+"','dd/mm/yyyy') and to_date('"+fechaFinBarra+"','dd/mm/yyyy') " +
 						" and vs.COPILOTO is not null ";
 
@@ -507,7 +519,7 @@ public class ConductoresDaoImpl implements ConductoresDao{
 					}
 				}
 			}
-						
+									
 			lstReporteTareoConductor = jdbcTemplate.query(sql, new ReporteTareoConductorRowMapper());
 			
 			return lstReporteTareoConductor;
@@ -517,11 +529,62 @@ public class ConductoresDaoImpl implements ConductoresDao{
 		}
 	}
 	
+	@Override
+	public MensajeResult insertDatosMantenimientoRuta(List<MantenimientoRuta> data){
+		try{			
+			String sql = "UPDATE pasajes.VRMRUTA SET " +
+			        "N_KILOMETROS = ?, " +
+			        "N_HORVIA = ?, " +
+			        "PRECIO_BASE = ?, " +
+			        "PRECIO_ECONOMICO = ?, " +
+			        "PRECIO_EJECUTIVO = ?, " +
+			        "PRECIO_PRESIDENCIAL = ?, " +
+			        "PRECIO_PREMIER = ? " +
+			        "WHERE RUTA_ID = ?";
+
+			for (MantenimientoRuta r : data) {
+			    jdbcTemplate.update(sql, ps -> {
+			        ps.setDouble(1, r.getN_kilometros());
+			        ps.setDouble(2, r.getN_horvia());
+			        ps.setDouble(3, r.getPrecio_base());
+			        ps.setDouble(4, r.getPrecio_economico());
+			        ps.setDouble(5, r.getPrecio_ejecutivo());
+			        ps.setDouble(6, r.getPrecio_presidencial());
+			        ps.setDouble(7, r.getPrecio_premier());
+			        ps.setInt(8, r.getRuta_id());
+			    });
+			}
+			
+			return new MensajeResult(Constantes.RESULT_TRUE, "");
+		}catch(Exception e){
+			e.printStackTrace();
+			return new MensajeResult(Constantes.RESULT_FALSE, "");
+		}
+	}
+	
+	@Override
+	public MensajeResult eliminarRegistroFormularioReten(int id){
+		try{
+			String sql_delete = "DELETE FROM pasajes.VRTFORMULARIORETEN WHERE FORMULARIORETEN_ID=" + id;
+			jdbcTemplate.update(sql_delete);
+
+			return new MensajeResult(Constantes.RESULT_TRUE, "");
+		}catch(Exception e){
+			e.printStackTrace();
+			return new MensajeResult(Constantes.RESULT_FALSE, "");
+		}
+	}
+	
+	private String toOracleDecimal(Double value) {
+	    if (value == null) return "0";
+	    return String.valueOf(value).replace(".", ",");
+	}
+	
 	private final class FormularioRetenRowMapper implements RowMapper<FormularioReten>{
 		
 		@Override
 		public FormularioReten mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new FormularioReten(rs.getString(1), rs.getInt(2), rs.getString(3), rs.getInt(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9), rs.getString(10), rs.getString(11));
+			return new FormularioReten(rs.getInt(1), rs.getString(2), rs.getInt(3), rs.getString(4), rs.getInt(5), rs.getString(6), rs.getString(7), rs.getString(8), rs.getString(9), rs.getString(10), rs.getString(11), rs.getString(12));
 		}
 	}
 	
@@ -546,7 +609,7 @@ public class ConductoresDaoImpl implements ConductoresDao{
 		
 		@Override
 		public MantenimientoRuta mapRow(ResultSet rs, int rowNum) throws SQLException {
-			return new MantenimientoRuta(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getDouble(5), rs.getDouble(6), rs.getDouble(7), rs.getDouble(8), rs.getDouble(9), rs.getDouble(10));
+			return new MantenimientoRuta(rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getDouble(5), rs.getDouble(6), rs.getDouble(7), rs.getDouble(8), rs.getDouble(9), rs.getDouble(10));
 		}
 	}
 	

@@ -8,7 +8,7 @@ public class MantenimientoRuta implements Serializable {
 	private int ruta_id;
 	private String c_origen;
 	private String c_destino;
-	private int n_kilometros;
+	private double n_kilometros;
 	private double n_horvia;
 	private double precio_base;
 	private double precio_economico;
@@ -20,7 +20,7 @@ public class MantenimientoRuta implements Serializable {
 		super();
 	}
 
-	public MantenimientoRuta(int ruta_id, String c_origen, String c_destino, int n_kilometros, double n_horvia,
+	public MantenimientoRuta(int ruta_id, String c_origen, String c_destino, double n_kilometros, double n_horvia,
 			double precio_base, double precio_economico, double precio_ejecutivo, double precio_presidencial,
 			double precio_premier) {
 		this.ruta_id = ruta_id;
@@ -59,11 +59,11 @@ public class MantenimientoRuta implements Serializable {
 		this.c_destino = c_destino;
 	}
 
-	public int getN_kilometros() {
+	public double getN_kilometros() {
 		return n_kilometros;
 	}
 
-	public void setN_kilometros(int n_kilometros) {
+	public void setN_kilometros(double n_kilometros) {
 		this.n_kilometros = n_kilometros;
 	}
 
