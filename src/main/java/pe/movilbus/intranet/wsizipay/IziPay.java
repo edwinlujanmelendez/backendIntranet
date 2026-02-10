@@ -29,12 +29,21 @@ public class IziPay {
 	
 	private static final Logger logger = LoggerFactory.getLogger(IziPay.class);
 	
-	public static MensajeFlagResultIziPay getTokenIziPay(String numOperacion){
-		try{			
+	public static MensajeFlagResultIziPay getTokenIziPay(String numOperacion, int idAgencia){
+		try{
+			String MERCHANT_ID_IZIPAY = "", PUBLIC_KEY_IZIPAY = "";
+	    	if(idAgencia == 345){		/* LIMA CALL CENTER */
+	    		MERCHANT_ID_IZIPAY = Constantes.MERCHANT_ID_IZIPAY_CALL_CENTER;
+	    		PUBLIC_KEY_IZIPAY = Constantes.PUBLIC_KEY_IZIPAY_CALL_CENTER;
+	    	}else if(idAgencia == 7 || idAgencia == 674){		/* BARRANCA */
+	    		MERCHANT_ID_IZIPAY = Constantes.MERCHANT_ID_IZIPAY_BARRANCA;
+	    		PUBLIC_KEY_IZIPAY = Constantes.PUBLIC_KEY_IZIPAY_BARRANCA;
+	    	}
+	    	
 			String bodySession = " { \"RequestSource\": \"ECOMMERCE\", "+
-								 " \"merchantCode\": \""+Constantes.MERCHANT_ID_IZIPAY+"\","+
-								 " \"OrderNumber\": \""+Constantes.MERCHANT_ID_IZIPAY+"\","+
-								 " \"PublicKey\": \""+Constantes.PUBLIC_KEY_IZIPAY+"\","+
+								 " \"merchantCode\": \""+MERCHANT_ID_IZIPAY+"\","+
+								 " \"OrderNumber\": \""+MERCHANT_ID_IZIPAY+"\","+
+								 " \"PublicKey\": \""+PUBLIC_KEY_IZIPAY+"\","+
 								 " \"Amount\": \"0.00\""+
 								 " } ";
 						
@@ -54,8 +63,8 @@ public class IziPay {
 	                    return new MensajeFlagResultIziPay(
 	                            true,
 	                            token,
-	                            Constantes.PUBLIC_KEY_IZIPAY,
-	                            Constantes.MERCHANT_ID_IZIPAY,
+	                            PUBLIC_KEY_IZIPAY,
+	                            MERCHANT_ID_IZIPAY,
 	                            numOperacion,
 	                            numOperacion,
 	                            ""
@@ -74,7 +83,7 @@ public class IziPay {
 		return new MensajeFlagResultIziPay(false, "", "", "", "", "", "Error desconocido en IziPay PagoLink");
 	}
 	
-	public static String getLink(String token, String numOperacion, String montoTotal, String descripcion, VentaPasajeros pasajero, String formatoHoraCompleto){
+	public static String getLink(String token, String numOperacion, String montoTotal, String descripcion, VentaPasajeros pasajero, String formatoHoraCompleto, int idAgencia){
 	    try{
 	    	String tipo_documento = "DNI";
 	    	
@@ -88,8 +97,15 @@ public class IziPay {
 	    		tipo_documento = "CARNET EXTRANJERIA";
 	    	}
 	    	
+	    	String MERCHANT_ID_IZIPAY = "";
+	    	if(idAgencia == 345){		/* LIMA CALL CENTER */
+	    		MERCHANT_ID_IZIPAY = Constantes.MERCHANT_ID_IZIPAY_CALL_CENTER;
+	    	}else if(idAgencia == 7 || idAgencia == 674){		/* BARRANCA */
+	    		MERCHANT_ID_IZIPAY = Constantes.MERCHANT_ID_IZIPAY_BARRANCA;
+	    	}
+	    	
 	        JSONObject json = new JSONObject();
-	        json.put("merchantCode", Constantes.MERCHANT_ID_IZIPAY);
+	        json.put("merchantCode", MERCHANT_ID_IZIPAY);
 	        json.put("productDescription", descripcion);
 	        json.put("amount", montoTotal);
 	        json.put("currency", "PEN");

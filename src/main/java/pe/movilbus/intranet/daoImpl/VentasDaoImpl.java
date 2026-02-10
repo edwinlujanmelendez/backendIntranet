@@ -1055,10 +1055,10 @@ public class VentasDaoImpl implements VentasDao{
 				String urlPagoLink = resultPagoLink.getLink();*/
 				
 				//INTEGRACION - IZIPAY
-				MensajeFlagResultIziPay result = IziPay.getTokenIziPay(nroOperacionIziPay);
+				MensajeFlagResultIziPay result = IziPay.getTokenIziPay(nroOperacionIziPay, venta.getIdAgencia());
 				if(result.getResult() == true){
 					//String urlPagoLink = IziPay.getLink(result.getTokenSession(), nroOperacionIziPay, montoFormateado, textoViajeRuta + " "+venta.getUsuarioSispas()+" "+nroOperacionIziPay, venta.getVentaPasajeros().get(0), formatoHoraCompleto);
-					String urlPagoLink = IziPay.getLink(result.getTokenSession(), nroOperacionIziPay, montoFormateado, textoViajeRuta + " en Móvil Bus "+nroOperacionIziPay, venta.getVentaPasajeros().get(0), formatoHoraCompleto);
+					String urlPagoLink = IziPay.getLink(result.getTokenSession(), nroOperacionIziPay, montoFormateado, textoViajeRuta + " en Móvil Bus "+nroOperacionIziPay, venta.getVentaPasajeros().get(0), formatoHoraCompleto, venta.getIdAgencia());
 					
 					if(urlPagoLink != null && !urlPagoLink.trim().isEmpty()){
 						//System.out.println("urlPagoLink: "+urlPagoLink);
